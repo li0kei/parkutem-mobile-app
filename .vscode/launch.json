@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ParkUTeM App - Supabase",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define=SUPABASE_URL=https://cqajdwalzkpfzxlvqiuf.supabase.co",
+        "--dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_lYFJhq8Y_u3cl4rPnqAxoQ_VFU-Doec"
+      ]
+    }
+  ]
+}
