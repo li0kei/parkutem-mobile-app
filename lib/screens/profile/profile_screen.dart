@@ -702,44 +702,50 @@ Widget _buildVehicleStickerCard(VehicleRecord? vehicle) {
     );
   }
 
-  // =====================================================
-  // MENU SECTION
-  // =====================================================
+// =====================================================
+// MENU SECTION
+// =====================================================
 
-  Widget _buildMenuSection(BuildContext context) {
-    return _SectionCard(
-      title: 'Account Settings',
-      child: Column(
-        children: [
-          _ProfileMenuTile(
-            icon: Icons.notifications_active_rounded,
-            title: 'Notification Settings',
-            subtitle: 'Manage parking alerts and reminders',
-            onTap: () => Navigator.of(context).pushNamed('/notification-settings'),
-          ),
-          _ProfileMenuTile(
-            icon: Icons.lock_rounded,
-            title: 'Security',
-            subtitle: 'Password managed by university portal',
-            onTap: () => Navigator.of(context).pushNamed('/security'),
-          ),
-          _ProfileMenuTile(
-            icon: Icons.receipt_long_rounded,
-            title: 'Parking History',
-            subtitle: 'View entry, exit and reservation logs',
-            onTap: () => Navigator.of(context).pushNamed('/parking-history'),
-          ),
-          _ProfileMenuTile(
-            icon: Icons.help_rounded,
-            title: 'Help & Support',
-            subtitle: 'Contact parking administrator',
-            onTap: () => Navigator.of(context).pushNamed('/help-support'),
-            showDivider: false,
-          ),
-        ],
-      ),
-    );
-  }
+Widget _buildMenuSection(BuildContext context) {
+  return _SectionCard(
+    title: 'Account Settings',
+    child: Column(
+      children: [
+        _ProfileMenuTile(
+          icon: Icons.notifications_rounded,
+          title: 'Notifications',
+          subtitle: 'View parking alerts and system updates',
+          onTap: () => Navigator.of(context).pushNamed('/notifications'),
+        ),
+        _ProfileMenuTile(
+          icon: Icons.notifications_active_rounded,
+          title: 'Notification Settings',
+          subtitle: 'Manage parking alerts and reminders',
+          onTap: () => Navigator.of(context).pushNamed('/notification-settings'),
+        ),
+        _ProfileMenuTile(
+          icon: Icons.lock_rounded,
+          title: 'Security',
+          subtitle: 'Password managed by university portal',
+          onTap: () => Navigator.of(context).pushNamed('/security'),
+        ),
+        _ProfileMenuTile(
+          icon: Icons.receipt_long_rounded,
+          title: 'Parking History',
+          subtitle: 'View entry, exit and reservation logs',
+          onTap: () => Navigator.of(context).pushNamed('/parking-history'),
+        ),
+        _ProfileMenuTile(
+          icon: Icons.help_rounded,
+          title: 'Help & Support',
+          subtitle: 'Contact parking administrator',
+          onTap: () => Navigator.of(context).pushNamed('/help-support'),
+          showDivider: false,
+        ),
+      ],
+    ),
+  );
+}
 
   // =====================================================
   // LOGOUT BUTTON

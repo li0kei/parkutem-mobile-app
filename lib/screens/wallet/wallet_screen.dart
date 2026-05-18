@@ -678,8 +678,12 @@ Future<void> _processTopUp(double amount) async {
     );
   } catch (error) {
     if (!mounted) return;
-
-    _showMessage('Top up failed: $error');
+    
+    _showMessage(
+      'Top up failed: $error',
+      isError: true,
+    );
+      
   } finally {
     if (mounted) {
       setState(() {
@@ -788,7 +792,10 @@ Future<void> _processTopUp(double amount) async {
 
                 if (amount < 5) {
                   Navigator.of(dialogContext).pop();
-                  _showMessage('Minimum top up amount is RM5.00.');
+                  _showMessage(
+                    'Minimum top up amount is RM5.00.',
+                    isError: true,
+                  );
                   return;
                 }
 
@@ -809,19 +816,65 @@ Future<void> _processTopUp(double amount) async {
     );
   }
 
-  // =====================================================
-  // SHOW MESSAGE
-  // =====================================================
+// =====================================================
+// SHOW MESSAGE
+// =====================================================
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF0F172A),
+void _showMessage(
+  String message, {
+  bool isError = false,
+}) {
+  final Color color = isError ? const Color(0xFFEF4444) : AppTheme.primaryBlue;
+  final IconData icon =
+      isError ? Icons.error_rounded : Icons.check_circle_rounded;
+
+  ScaffoldMessenger.of(context).clearSnackBars();
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      elevation: 0,
+      backgroundColor: Colors.white,
+      margin: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(
+          color: Color(0xFFE8EEF7),
+        ),
       ),
-    );
-  }
+      content: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   // =====================================================
   // BOTTOM NAVIGATION

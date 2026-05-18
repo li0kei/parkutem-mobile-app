@@ -1349,7 +1349,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
         ),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(20, 0, 20, 90),
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: AppTheme.primaryBlue,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),

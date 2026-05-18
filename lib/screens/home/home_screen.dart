@@ -17,6 +17,7 @@ import '../../widgets/activity_tile.dart';
 import '../../widgets/app_bottom_navigation.dart';
 import '../../widgets/dashboard_stat_card.dart';
 import '../../widgets/home_action_card.dart';
+import '../../core/services/notification_service.dart';
 
 // =====================================================
 // HOME SCREEN
@@ -39,12 +40,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final ReservationHistoryService _reservationHistoryService =
       ReservationHistoryService();
   final ParkingService _parkingService = ParkingService();
+  final NotificationService _notificationService = NotificationService();
 
   UniversityUser? _profile;
   VehicleRecord? _vehicle;
   List<ReservationRecord> _upcomingReservations = [];
   List<ParkingBay> _parkingBays = [];
 
+  int _unreadNotificationCount = 0;
+  
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -58,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadHomeDashboard();
   }
 
+  
   // =====================================================
   // LOAD HOME DASHBOARD
   // =====================================================
@@ -79,12 +84,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final List<ParkingBay> bays = await _parkingService.getParkingBays();
 
+      final int unreadNotificationCount =
+        await _notificationService.getUnreadCount();
+
       if (!mounted) return;
 
       setState(() {
         _profile = profile;
         _vehicle = vehicle;
         _upcomingReservations = reservations;
+        _unreadNotificationCount = unreadNotificationCount;
         _parkingBays = bays;
         _isLoading = false;
       });
@@ -255,29 +264,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        InkWell(
-          onTap: _loadHomeDashboard,
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+      Row(
+          children: [
+            _HeaderIconButton(
+              icon: Icons.refresh_rounded,
+              onTap: _loadHomeDashboard,
             ),
-            child: const Icon(
-              Icons.refresh_rounded,
-              color: AppTheme.primaryBlue,
-              size: 27,
+            const SizedBox(width: 10),
+            _NotificationBellButton(
+              unreadCount: _unreadNotificationCount,
+              onTap: () async {
+                await Navigator.of(context).pushNamed('/notifications');
+
+                if (!mounted) return;
+
+                _loadHomeDashboard();
+              },
             ),
-          ),
+          ],
         ),
       ],
     );
@@ -953,6 +957,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  
   // =====================================================
   // RECENT ACTIVITY
   // =====================================================
@@ -1187,6 +1192,8 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+
+
 // =====================================================
 // SMALL QUICK ACTION
 // =====================================================
@@ -1246,6 +1253,128 @@ class _SmallQuickAction extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// =====================================================
+// HEADER ICON BUTTON
+// =====================================================
+
+class _HeaderIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HeaderIconButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+          border: Border.all(
+            color: const Color(0xFFE8EEF7),
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: AppTheme.primaryBlue,
+          size: 25,
+        ),
+      ),
+    );
+  }
+}
+
+// =====================================================
+// NOTIFICATION BELL BUTTON
+// =====================================================
+
+class _NotificationBellButton extends StatelessWidget {
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  const _NotificationBellButton({
+    required this.unreadCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+              border: Border.all(
+                color: const Color(0xFFE8EEF7),
+              ),
+            ),
+            child: const Icon(
+              Icons.notifications_rounded,
+              color: AppTheme.primaryBlue,
+              size: 25,
+            ),
+          ),
+          if (unreadCount > 0)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: Container(
+                width: 20,
+                height: 20,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: Colors.white,
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  unreadCount > 9 ? '9+' : unreadCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

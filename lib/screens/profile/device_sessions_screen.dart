@@ -13,34 +13,16 @@ class DeviceSessionsScreen extends StatefulWidget {
   State<DeviceSessionsScreen> createState() => _DeviceSessionsScreenState();
 }
 
-class _DeviceSessionsScreenState extends State<DeviceSessionsScreen> {
-  List<_DeviceSession> _sessions = const [
-    _DeviceSession(
-      deviceName: 'Current Android Device',
-      location: 'Melaka, Malaysia',
-      lastActive: 'Active now',
-      isCurrent: true,
-      icon: Icons.phone_android_rounded,
-    ),
-    _DeviceSession(
-      deviceName: 'Chrome on Windows',
-      location: 'Sungai Way, Malaysia',
-      lastActive: 'Today, 4:42 PM',
-      isCurrent: false,
-      icon: Icons.desktop_windows_rounded,
-    ),
-    _DeviceSession(
-      deviceName: 'Android Emulator',
-      location: 'Development Device',
-      lastActive: 'Yesterday, 9:18 PM',
-      isCurrent: false,
-      icon: Icons.developer_mode_rounded,
-    ),
-  ];
+// =====================================================
+// DEVICE SESSIONS SCREEN STATE
+// =====================================================
 
-  int get _otherDeviceCount {
-    return _sessions.where((session) => !session.isCurrent).length;
-  }
+class _DeviceSessionsScreenState extends State<DeviceSessionsScreen> {
+  bool _isSessionActive = true;
+
+  // =====================================================
+  // BUILD
+  // =====================================================
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +39,11 @@ class _DeviceSessionsScreenState extends State<DeviceSessionsScreen> {
               const SizedBox(height: 24),
               _buildStatusCard(),
               const SizedBox(height: 24),
-              _buildSessionsList(),
+              _buildCurrentSessionCard(),
               const SizedBox(height: 24),
-              _buildLogoutOtherDevicesButton(),
+              _buildSessionManagementCard(),
+              const SizedBox(height: 24),
+              _buildSecurityNote(),
             ],
           ),
         ),
@@ -74,7 +58,9 @@ class _DeviceSessionsScreenState extends State<DeviceSessionsScreen> {
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
-        _BackButton(onTap: () => Navigator.of(context).pop()),
+        _BackButton(
+          onTap: () => Navigator.of(context).pop(),
+        ),
         const SizedBox(width: 14),
         const Expanded(
           child: Column(
@@ -91,7 +77,7 @@ class _DeviceSessionsScreenState extends State<DeviceSessionsScreen> {
               ),
               SizedBox(height: 4),
               Text(
-                'Manage active login sessions',
+                'View current login session',
                 style: TextStyle(
                   color: Color(0xFF64748B),
                   fontSize: 12.5,
@@ -149,9 +135,9 @@ class _DeviceSessionsScreenState extends State<DeviceSessionsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Active Sessions',
-                  style: TextStyle(
+                Text(
+                  _isSessionActive ? 'Session Active' : 'Session Ended',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 19,
                     fontWeight: FontWeight.w900,
@@ -159,9 +145,9 @@ class _DeviceSessionsScreenState extends State<DeviceSessionsScreen> {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  _otherDeviceCount == 0
-                      ? 'Only your current device is logged in.'
-                      : '$_otherDeviceCount other device(s) are logged in.',
+                  _isSessionActive
+                      ? 'This device is currently signed in with Supabase Auth.'
+                      : 'This device session has been marked as ended for prototype display.',
                   style: const TextStyle(
                     color: Color(0xFFCBD5E1),
                     fontSize: 12.5,
@@ -178,137 +164,212 @@ class _DeviceSessionsScreenState extends State<DeviceSessionsScreen> {
   }
 
   // =====================================================
-  // SESSIONS LIST
+  // CURRENT SESSION CARD
   // =====================================================
 
-  Widget _buildSessionsList() {
-    return _SectionCard(
-      title: 'Logged-in Devices',
+  Widget _buildCurrentSessionCard() {
+    return const _SectionCard(
+      title: 'Current Device',
       child: Column(
-        children: _sessions.map((session) {
-          final bool isLast = session == _sessions.last;
-
-          return _DeviceSessionTile(
-            session: session,
-            showDivider: !isLast,
-          );
-        }).toList(),
+        children: [
+          _DeviceSessionTile(
+            icon: Icons.phone_android_rounded,
+            deviceName: 'Android Device',
+            sessionLabel: 'This device',
+            status: 'Active now',
+            detail: 'Signed in through ParkUTeM mobile app',
+            color: Color(0xFF22C55E),
+            showCurrentBadge: true,
+          ),
+          SizedBox(height: 16),
+          _InfoNote(
+            icon: Icons.security_rounded,
+            title: 'Session Source',
+            description:
+                'ParkUTeM uses Supabase Auth session storage. The user stays signed in until logout or session expiry.',
+          ),
+        ],
       ),
     );
   }
 
   // =====================================================
-  // LOGOUT OTHER DEVICES BUTTON
+  // SESSION MANAGEMENT CARD
   // =====================================================
 
-  Widget _buildLogoutOtherDevicesButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: OutlinedButton.icon(
-        onPressed: _otherDeviceCount == 0 ? null : _logoutOtherDevices,
-        icon: const Icon(Icons.logout_rounded),
-        label: Text(
-          _otherDeviceCount == 0
-              ? 'No Other Devices'
-              : 'Logout Other Devices',
-        ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFEF4444),
-          disabledForegroundColor: const Color(0xFF94A3B8),
-          side: BorderSide(
-            color: _otherDeviceCount == 0
-                ? const Color(0xFFE2E8F0)
-                : const Color(0xFFFECACA),
+  Widget _buildSessionManagementCard() {
+    return _SectionCard(
+      title: 'Session Management',
+      child: Column(
+        children: [
+          _ActionTile(
+            icon: Icons.refresh_rounded,
+            title: 'Refresh Session Status',
+            subtitle: 'Check current session state',
+            onTap: _refreshSessionStatus,
           ),
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+          _ActionTile(
+            icon: Icons.logout_rounded,
+            title: 'Logout Other Devices',
+            subtitle: 'Available later with full session management',
+            onTap: _showFutureFeatureMessage,
+            showDivider: false,
           ),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        ],
       ),
     );
   }
 
-  void _logoutOtherDevices() {
+  // =====================================================
+  // SECURITY NOTE
+  // =====================================================
+
+  Widget _buildSecurityNote() {
+    return const _SectionCard(
+      title: 'Security Notes',
+      child: Column(
+        children: [
+          _InfoNote(
+            icon: Icons.verified_user_rounded,
+            title: 'UTeM Account Only',
+            description:
+                'Only preloaded student and staff accounts from university_users can access this mobile app.',
+          ),
+          SizedBox(height: 14),
+          _InfoNote(
+            icon: Icons.lock_rounded,
+            title: 'Password Handling',
+            description:
+                'Password verification is handled through Supabase Auth using the email mapped from Student/Staff ID.',
+          ),
+          SizedBox(height: 14),
+          _InfoNote(
+            icon: Icons.devices_other_rounded,
+            title: 'Future Enhancement',
+            description:
+                'Full multi-device session listing can be added later when device token tracking or Firebase integration is enabled.',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =====================================================
+  // ACTIONS
+  // =====================================================
+
+  void _refreshSessionStatus() {
     setState(() {
-      _sessions = _sessions.where((session) => session.isCurrent).toList();
+      _isSessionActive = true;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Other devices have been logged out.'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Color(0xFF0F172A),
-      ),
+    _showMessage('Session status refreshed.');
+  }
+
+  void _showFutureFeatureMessage() {
+    _showMessage(
+      'Multi-device logout will be connected later with full session tracking.',
     );
   }
+
+  void _showMessage(String message) {
+  ScaffoldMessenger.of(context).clearSnackBars();
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      elevation: 0,
+      backgroundColor: Colors.white,
+      margin: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(
+          color: Color(0xFFE8EEF7),
+        ),
+      ),
+      content: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryBlue.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              color: AppTheme.primaryBlue,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 }
 
 // =====================================================
-// DEVICE SESSION MODEL
-// =====================================================
-
-class _DeviceSession {
-  final String deviceName;
-  final String location;
-  final String lastActive;
-  final bool isCurrent;
-  final IconData icon;
-
-  const _DeviceSession({
-    required this.deviceName,
-    required this.location,
-    required this.lastActive,
-    required this.isCurrent,
-    required this.icon,
-  });
-}
-
-// =====================================================
-// REUSABLE WIDGETS
+// BACK BUTTON
 // =====================================================
 
 class _BackButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _BackButton({required this.onTap});
+  const _BackButton({
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFE8EEF7),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.055),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFE8EEF7),
             ),
-          ],
-        ),
-        child: const Icon(
-          Icons.arrow_back_rounded,
-          color: Color(0xFF0F172A),
-          size: 24,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.055),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.arrow_back_rounded,
+            color: Color(0xFF0F172A),
+            size: 24,
+          ),
         ),
       ),
     );
   }
 }
+
+// =====================================================
+// SECTION CARD
+// =====================================================
 
 class _SectionCard extends StatelessWidget {
   final String title;
@@ -332,7 +393,7 @@ class _SectionCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.055),
+            color: Colors.black.withValues(alpha: 0.045),
             blurRadius: 18,
             offset: const Offset(0, 9),
           ),
@@ -357,98 +418,316 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+// =====================================================
+// DEVICE SESSION TILE
+// =====================================================
+
 class _DeviceSessionTile extends StatelessWidget {
-  final _DeviceSession session;
-  final bool showDivider;
+  final IconData icon;
+  final String deviceName;
+  final String sessionLabel;
+  final String status;
+  final String detail;
+  final Color color;
+  final bool showCurrentBadge;
 
   const _DeviceSessionTile({
-    required this.session,
-    required this.showDivider,
+    required this.icon,
+    required this.deviceName,
+    required this.sessionLabel,
+    required this.status,
+    required this.detail,
+    required this.color,
+    this.showCurrentBadge = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final Color color =
-        session.isCurrent ? const Color(0xFF22C55E) : AppTheme.primaryBlue;
+    return Row(
+      children: [
+        _IconBox(
+          icon: icon,
+          color: color,
+        ),
+        const SizedBox(width: 13),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      deviceName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  if (showCurrentBadge) ...[
+                    const SizedBox(width: 8),
+                    _SmallBadge(
+                      label: 'Current',
+                      color: color,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                sessionLabel,
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                status,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                detail,
+                style: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
 
+// =====================================================
+// ACTION TILE
+// =====================================================
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool showDivider;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.showDivider = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Icon(
-                session.icon,
-                color: color,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
                 children: [
-                  Text(
-                    session.deviceName,
-                    style: const TextStyle(
-                      color: Color(0xFF0F172A),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
+                  _IconBox(
+                    icon: icon,
+                    color: AppTheme.primaryBlue,
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    session.location,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    session.lastActive,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF94A3B8),
+                    size: 24,
                   ),
                 ],
               ),
             ),
-            if (session.isCurrent)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'Current',
-                  style: TextStyle(
-                    color: Color(0xFF22C55E),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
         if (showDivider) ...[
           const SizedBox(height: 13),
-          const Divider(height: 1, color: Color(0xFFE8EEF7)),
+          const Divider(
+            height: 1,
+            color: Color(0xFFE8EEF7),
+          ),
           const SizedBox(height: 13),
         ],
       ],
+    );
+  }
+}
+
+// =====================================================
+// INFO NOTE
+// =====================================================
+
+class _InfoNote extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _InfoNote({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryBlue.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.primaryBlue.withValues(alpha: 0.13),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            color: AppTheme.primaryBlue,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =====================================================
+// ICON BOX
+// =====================================================
+
+class _IconBox extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+
+  const _IconBox({
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Icon(
+        icon,
+        color: color,
+        size: 22,
+      ),
+    );
+  }
+}
+
+// =====================================================
+// SMALL BADGE
+// =====================================================
+
+class _SmallBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _SmallBadge({
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }

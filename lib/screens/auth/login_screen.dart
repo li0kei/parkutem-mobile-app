@@ -46,57 +46,60 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // =====================================================
-  // HANDLE LOGIN
-  // =====================================================
+// =====================================================
+// HANDLE LOGIN
+// =====================================================
 
-  Future<void> _handleLogin() async {
-    final String universityId = _idController.text.trim();
-    final String password = _passwordController.text.trim();
+Future<void> _handleLogin() async {
+  final String universityId = _idController.text.trim();
+  final String password = _passwordController.text.trim();
 
-    if (universityId.isEmpty || password.isEmpty) {
-      _showMessage(
-        'Please enter your Student/Staff ID and password.',
-        isError: true,
-      );
-      return;
+  if (universityId.isEmpty || password.isEmpty) {
+    _showMessage(
+      'Please enter your Student/Staff ID and password.',
+      isError: true,
+    );
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    await _authService.signInWithUniversityId(
+      universityId: universityId,
+      password: password,
+    );
+
+    debugPrint('Login success. Navigating to home...');
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/home',
+      (route) => false,
+    );
+  } on AuthException catch (error) {
+    _showMessage(
+      error.message,
+      isError: true,
+    );
+  } catch (error) {
+    _showMessage(
+      error.toString(),
+      isError: true,
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _authService.signInWithUniversityId(
-        universityId: universityId,
-        password: password,
-      );
-
-      debugPrint('Login success. Fetching profile next...');
-
-      if (!mounted) return;
-
-      _showMessage('Login successful.');
-
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/home',
-        (route) => false,
-      );
-    } on AuthException catch (error) {
-      _showMessage(error.message, isError: true);
-    }      catch (error) {
-      _showMessage(
-        error.toString(),
-        isError: true,
-      );
-    } finally {
-  if (mounted) {
-    setState(() {
-      _isLoading = false;
-    });
   }
 }
-  }
 
   // =====================================================
   // SHOW MESSAGE

@@ -1,4 +1,9 @@
+// =====================================================
+// IMPORTS
+// =====================================================
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_theme.dart';
 
@@ -9,9 +14,14 @@ import '../../core/theme/app_theme.dart';
 class UniversityPortalScreen extends StatelessWidget {
   const UniversityPortalScreen({super.key});
 
-  static const String studentId = 'B032410123';
   static const String portalName = 'UTeM Student/Staff Portal';
-  static const String portalUrl = 'smp.utem.edu.my';
+  static const String portalUrl = 'https://portal.utem.edu.my/iutem/';
+
+  static final Uri _portalUri = Uri.parse(portalUrl);
+
+  // =====================================================
+  // BUILD
+  // =====================================================
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +40,8 @@ class UniversityPortalScreen extends StatelessWidget {
               const SizedBox(height: 24),
               _buildLoginInfoCard(),
               const SizedBox(height: 24),
+              _buildAuthenticationFlowCard(),
+              const SizedBox(height: 24),
               _buildPolicyNote(),
               const SizedBox(height: 24),
               _buildOpenPortalButton(context),
@@ -47,7 +59,9 @@ class UniversityPortalScreen extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
-        _BackButton(onTap: () => Navigator.of(context).pop()),
+        _BackButton(
+          onTap: () => Navigator.of(context).pop(),
+        ),
         const SizedBox(width: 14),
         const Expanded(
           child: Column(
@@ -64,7 +78,7 @@ class UniversityPortalScreen extends StatelessWidget {
               ),
               SizedBox(height: 4),
               Text(
-                'Password and account access are managed here',
+                'Password and account access are managed externally',
                 style: TextStyle(
                   color: Color(0xFF64748B),
                   fontSize: 12.5,
@@ -132,11 +146,21 @@ class UniversityPortalScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 6),
                 Text(
-                  portalUrl,
+                  'portal.utem.edu.my/iutem',
                   style: TextStyle(
                     color: Color(0xFFDCEBFF),
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Used for official university account and password management.',
+                  style: TextStyle(
+                    color: Color(0xFFDCEBFF),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
                   ),
                 ),
               ],
@@ -152,24 +176,68 @@ class UniversityPortalScreen extends StatelessWidget {
   // =====================================================
 
   Widget _buildLoginInfoCard() {
-    return _SectionCard(
-      title: 'Portal Login Details',
-      child: const Column(
+    return const _SectionCard(
+      title: 'ParkUTeM Login Details',
+      child: Column(
         children: [
           _InfoRow(
             icon: Icons.badge_rounded,
-            label: 'University ID',
-            value: studentId,
+            label: 'Mobile App Login',
+            value: 'Student/Staff ID + Password',
+          ),
+          _InfoRow(
+            icon: Icons.alternate_email_rounded,
+            label: 'Internal Auth Email',
+            value: 'Mapped from university_users record',
           ),
           _InfoRow(
             icon: Icons.lock_rounded,
-            label: 'Password',
-            value: 'Same as university portal password',
+            label: 'Password Source',
+            value: 'Supabase Auth / university account password',
           ),
           _InfoRow(
             icon: Icons.verified_user_rounded,
-            label: 'ParkUTeM Authentication',
-            value: 'Uses university credential record',
+            label: 'Access Rule',
+            value: 'Only preloaded UTeM accounts can login',
+            showDivider: false,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =====================================================
+  // AUTHENTICATION FLOW CARD
+  // =====================================================
+
+  Widget _buildAuthenticationFlowCard() {
+    return const _SectionCard(
+      title: 'Authentication Flow',
+      child: Column(
+        children: [
+          _FlowStep(
+            number: '1',
+            title: 'Enter Student/Staff ID',
+            description:
+                'User logs in using university ID only, not public registration.',
+          ),
+          _FlowStep(
+            number: '2',
+            title: 'Find University Record',
+            description:
+                'ParkUTeM checks university_users to find the registered email.',
+          ),
+          _FlowStep(
+            number: '3',
+            title: 'Authenticate with Supabase',
+            description:
+                'The mapped email and password are verified using Supabase Auth.',
+          ),
+          _FlowStep(
+            number: '4',
+            title: 'Load App Profile',
+            description:
+                'Profile, wallet, vehicle, reservation, and ANPR data are loaded.',
             showDivider: false,
           ),
         ],
@@ -203,7 +271,7 @@ class UniversityPortalScreen extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'ParkUTeM does not manage password changes. Students and staff must update their password through the official university portal.',
+              'ParkUTeM does not provide public registration. Student and staff accounts must already exist in Supabase Auth and university_users before they can access the mobile app.',
               style: TextStyle(
                 color: const Color(0xFF0F172A).withValues(alpha: 0.74),
                 fontSize: 12.4,
@@ -226,20 +294,13 @@ class UniversityPortalScreen extends StatelessWidget {
       width: double.infinity,
       height: 54,
       child: ElevatedButton.icon(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('External portal link will be connected later.'),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: Color(0xFF0F172A),
-            ),
-          );
-        },
+        onPressed: () => _openPortal(context),
         icon: const Icon(Icons.open_in_browser_rounded),
         label: const Text('Open University Portal'),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primaryBlue,
           foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -251,48 +312,110 @@ class UniversityPortalScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-// =====================================================
-// REUSABLE WIDGETS
-// =====================================================
+  // =====================================================
+  // OPEN PORTAL
+  // =====================================================
 
-class _BackButton extends StatelessWidget {
-  final VoidCallback onTap;
+  Future<void> _openPortal(BuildContext context) async {
+    try {
+      final bool launched = await launchUrl(
+        _portalUri,
+        mode: LaunchMode.externalApplication,
+      );
 
-  const _BackButton({required this.onTap});
+      if (!launched && context.mounted) {
+        _showMessage(
+          context,
+          'Unable to open university portal.',
+          isError: true,
+        );
+      }
+    } catch (_) {
+      if (!context.mounted) return;
 
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFE8EEF7),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.055),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.arrow_back_rounded,
-          color: Color(0xFF0F172A),
-          size: 24,
+      _showMessage(
+        context,
+        'Unable to open university portal.',
+        isError: true,
+      );
+    }
+  }
+
+  // =====================================================
+  // SHOW MESSAGE
+  // =====================================================
+
+  void _showMessage(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+  }) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor:
+            isError ? const Color(0xFFEF4444) : AppTheme.primaryBlue,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
         ),
       ),
     );
   }
 }
+
+// =====================================================
+// BACK BUTTON
+// =====================================================
+
+class _BackButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _BackButton({
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFE8EEF7),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.055),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.arrow_back_rounded,
+            color: Color(0xFF0F172A),
+            size: 24,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =====================================================
+// SECTION CARD
+// =====================================================
 
 class _SectionCard extends StatelessWidget {
   final String title;
@@ -316,7 +439,7 @@ class _SectionCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.055),
+            color: Colors.black.withValues(alpha: 0.045),
             blurRadius: 18,
             offset: const Offset(0, 9),
           ),
@@ -341,6 +464,10 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+// =====================================================
+// INFO ROW
+// =====================================================
+
 class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -360,18 +487,9 @@ class _InfoRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.09),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                icon,
-                color: AppTheme.primaryBlue,
-                size: 22,
-              ),
+            _IconBox(
+              icon: icon,
+              color: AppTheme.primaryBlue,
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -393,6 +511,7 @@ class _InfoRow extends StatelessWidget {
                       color: Color(0xFF0F172A),
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
+                      height: 1.35,
                     ),
                   ),
                 ],
@@ -402,10 +521,126 @@ class _InfoRow extends StatelessWidget {
         ),
         if (showDivider) ...[
           const SizedBox(height: 13),
-          const Divider(height: 1, color: Color(0xFFE8EEF7)),
+          const Divider(
+            height: 1,
+            color: Color(0xFFE8EEF7),
+          ),
           const SizedBox(height: 13),
         ],
       ],
+    );
+  }
+}
+
+// =====================================================
+// FLOW STEP
+// =====================================================
+
+class _FlowStep extends StatelessWidget {
+  final String number;
+  final String title;
+  final String description;
+  final bool showDivider;
+
+  const _FlowStep({
+    required this.number,
+    required this.title,
+    required this.description,
+    this.showDivider = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                number,
+                style: const TextStyle(
+                  color: AppTheme.primaryBlue,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (showDivider) ...[
+          const SizedBox(height: 13),
+          const Divider(
+            height: 1,
+            color: Color(0xFFE8EEF7),
+          ),
+          const SizedBox(height: 13),
+        ],
+      ],
+    );
+  }
+}
+
+// =====================================================
+// ICON BOX
+// =====================================================
+
+class _IconBox extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+
+  const _IconBox({
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Icon(
+        icon,
+        color: color,
+        size: 22,
+      ),
     );
   }
 }

@@ -9,6 +9,10 @@ import '../../core/theme/app_theme.dart';
 class SecurityScreen extends StatelessWidget {
   const SecurityScreen({super.key});
 
+  // =====================================================
+  // BUILD
+  // =====================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,7 +30,9 @@ class SecurityScreen extends StatelessWidget {
               const SizedBox(height: 24),
               _buildSecurityInfo(),
               const SizedBox(height: 24),
-              _buildActions(context),
+              _buildSecurityActions(context),
+              const SizedBox(height: 24),
+              _buildSecurityTips(),
             ],
           ),
         ),
@@ -128,7 +134,7 @@ class SecurityScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 5),
                 Text(
-                  'Login is verified using student/staff university credentials.',
+                  'Only preloaded UTeM student/staff accounts can access ParkUTeM.',
                   style: TextStyle(
                     color: Color(0xFFCBD5E1),
                     fontSize: 12.5,
@@ -149,9 +155,9 @@ class SecurityScreen extends StatelessWidget {
   // =====================================================
 
   Widget _buildSecurityInfo() {
-    return _SectionCard(
+    return const _SectionCard(
       title: 'Login Information',
-      child: const Column(
+      child: Column(
         children: [
           _InfoRow(
             icon: Icons.badge_rounded,
@@ -161,17 +167,17 @@ class SecurityScreen extends StatelessWidget {
           _InfoRow(
             icon: Icons.lock_rounded,
             label: 'Password Control',
-            value: 'Managed by university portal',
+            value: 'Managed by Supabase Auth / university account',
           ),
           _InfoRow(
             icon: Icons.storage_rounded,
-            label: 'Prototype Data',
-            value: 'Dummy university records',
+            label: 'Account Source',
+            value: 'Supabase university_users record',
           ),
           _InfoRow(
-            icon: Icons.history_rounded,
-            label: 'Last Login',
-            value: 'Today, 5:12 PM',
+            icon: Icons.verified_rounded,
+            label: 'Access Policy',
+            value: 'Only preloaded UTeM accounts can login',
             showDivider: false,
           ),
         ],
@@ -183,7 +189,7 @@ class SecurityScreen extends StatelessWidget {
   // SECURITY ACTIONS
   // =====================================================
 
-  Widget _buildActions(BuildContext context) {
+  Widget _buildSecurityActions(BuildContext context) {
     return _SectionCard(
       title: 'Security Actions',
       child: Column(
@@ -197,13 +203,46 @@ class SecurityScreen extends StatelessWidget {
             },
           ),
           _ActionTile(
-            icon: Icons.logout_rounded,
-            title: 'Logout Other Devices',
-            subtitle: 'View and logout active sessions',
+            icon: Icons.devices_rounded,
+            title: 'Device Sessions',
+            subtitle: 'View active device sessions placeholder',
             showDivider: false,
             onTap: () {
               Navigator.of(context).pushNamed('/device-sessions');
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =====================================================
+  // SECURITY TIPS
+  // =====================================================
+
+  Widget _buildSecurityTips() {
+    return const _SectionCard(
+      title: 'Security Notes',
+      child: Column(
+        children: [
+          _TipTile(
+            icon: Icons.shield_rounded,
+            title: 'No Public Registration',
+            description:
+                'ParkUTeM mobile app only allows UTeM student/staff records that already exist in the database.',
+          ),
+          _TipTile(
+            icon: Icons.alternate_email_rounded,
+            title: 'ID-Based Login',
+            description:
+                'Students and staff login using their university ID, while Supabase Auth uses the registered email internally.',
+          ),
+          _TipTile(
+            icon: Icons.admin_panel_settings_rounded,
+            title: 'Admin Controlled Access',
+            description:
+                'If an account is inactive or suspended, login will be blocked automatically.',
+            showDivider: false,
           ),
         ],
       ),
@@ -283,7 +322,7 @@ class _SectionCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.055),
+            color: Colors.black.withValues(alpha: 0.045),
             blurRadius: 18,
             offset: const Offset(0, 9),
           ),
@@ -331,18 +370,9 @@ class _InfoRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.09),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Icon(
-                icon,
-                color: AppTheme.primaryBlue,
-                size: 22,
-              ),
+            _IconBox(
+              icon: icon,
+              color: AppTheme.primaryBlue,
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -364,6 +394,7 @@ class _InfoRow extends StatelessWidget {
                       color: Color(0xFF0F172A),
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
+                      height: 1.35,
                     ),
                   ),
                 ],
@@ -416,18 +447,9 @@ class _ActionTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue.withValues(alpha: 0.09),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: AppTheme.primaryBlue,
-                      size: 22,
-                    ),
+                  _IconBox(
+                    icon: icon,
+                    color: AppTheme.primaryBlue,
                   ),
                   const SizedBox(width: 13),
                   Expanded(
@@ -474,6 +496,106 @@ class _ActionTile extends StatelessWidget {
           const SizedBox(height: 13),
         ],
       ],
+    );
+  }
+}
+
+// =====================================================
+// TIP TILE
+// =====================================================
+
+class _TipTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final bool showDivider;
+
+  const _TipTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+    this.showDivider = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _IconBox(
+              icon: icon,
+              color: AppTheme.primaryBlue,
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (showDivider) ...[
+          const SizedBox(height: 13),
+          const Divider(
+            height: 1,
+            color: Color(0xFFE8EEF7),
+          ),
+          const SizedBox(height: 13),
+        ],
+      ],
+    );
+  }
+}
+
+// =====================================================
+// ICON BOX
+// =====================================================
+
+class _IconBox extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+
+  const _IconBox({
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Icon(
+        icon,
+        color: color,
+        size: 22,
+      ),
     );
   }
 }

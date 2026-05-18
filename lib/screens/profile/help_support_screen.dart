@@ -392,9 +392,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     required ValueChanged<String?> onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       isExpanded: true,
-      decoration: _inputDecoration(
+        decoration: _inputDecoration(
         label: label,
         hintText: label,
         icon: icon,

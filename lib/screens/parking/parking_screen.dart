@@ -794,12 +794,55 @@ class _ParkingScreenState extends State<ParkingScreen> {
     }
   }
 
+  // =====================================================
+  // SHOW COMING SOON
+  // =====================================================
+
   void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$feature screen will be added next.'),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF0F172A),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        margin: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(
+            color: Color(0xFFE8EEF7),
+          ),
+        ),
+        content: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.info_rounded,
+                color: AppTheme.primaryBlue,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '$feature screen will be added next.',
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
