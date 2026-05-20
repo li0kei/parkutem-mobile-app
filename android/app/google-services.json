@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "212181354393",
+    "project_id": "parkutem-app-6e601",
+    "storage_bucket": "parkutem-app-6e601.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:212181354393:android:cc465a785abd77686c7508",
+        "android_client_info": {
+          "package_name": "com.example.parkutem_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnmbsNavepk6RU3eI813x3pgdQ9hSuvnw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
