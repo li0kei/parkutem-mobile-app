@@ -3,6 +3,7 @@
 // =====================================================
 
 import '../../models/reservation_record.dart';
+import 'auth_service.dart';
 import 'supabase_service.dart';
 
 // =====================================================
@@ -11,23 +12,39 @@ import 'supabase_service.dart';
 
 class ReservationHistoryService {
   final _client = SupabaseService.client;
+  final AuthService _authService = AuthService();
 
   // =====================================================
   // GET CURRENT USER RESERVATIONS
   // =====================================================
 
   Future<List<ReservationRecord>> getCurrentUserReservations() async {
-    final List<dynamic> records = await _client.rpc(
-      'get_current_user_reservations',
-    );
+    final currentUser = await _authService.getCurrentUniversityUser();
 
-    return records.map((record) {
-      final Map<String, dynamic> data = Map<String, dynamic>.from(
-        record as Map,
+    if (currentUser == null || currentUser.universityId.trim().isEmpty) {
+      return [];
+    }
+
+    try {
+      final dynamic response = await _client.rpc(
+        'get_university_user_reservations',
+        params: {'p_university_id': currentUser.universityId},
       );
 
-      return ReservationRecord.fromJson(data);
-    }).toList();
+      if (response is! List) {
+        return [];
+      }
+
+      return response.map((record) {
+        final Map<String, dynamic> data = Map<String, dynamic>.from(
+          record as Map,
+        );
+
+        return ReservationRecord.fromJson(data);
+      }).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   // =====================================================

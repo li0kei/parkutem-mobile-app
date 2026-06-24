@@ -7,7 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/constants/app_assets.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/push_notification_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/university_user.dart';
 import '../../widgets/app_background.dart';
 
 // =====================================================
@@ -46,60 +48,67 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-// =====================================================
-// HANDLE LOGIN
-// =====================================================
+  // =====================================================
+  // HANDLE LOGIN
+  // =====================================================
 
-Future<void> _handleLogin() async {
-  final String universityId = _idController.text.trim();
-  final String password = _passwordController.text.trim();
+  Future<void> _handleLogin() async {
+    final String identifier = _idController.text.trim();
+    final String password = _passwordController.text.trim();
 
-  if (universityId.isEmpty || password.isEmpty) {
-    _showMessage(
-      'Please enter your Student/Staff ID and password.',
-      isError: true,
-    );
-    return;
-  }
+    if (identifier.isEmpty || password.isEmpty) {
+      _showMessage(
+        'Please enter your Student/Staff ID or email and password.',
+        isError: true,
+      );
+      return;
+    }
 
-  setState(() {
-    _isLoading = true;
-  });
+    setState(() {
+      _isLoading = true;
+    });
 
-  try {
-    await _authService.signInWithUniversityId(
-      universityId: universityId,
-      password: password,
-    );
+    try {
+      final UniversityUser universityUser = await _authService
+          .signInWithUniversityId(universityId: identifier, password: password);
 
-    debugPrint('Login success. Navigating to home...');
+      debugPrint(
+        'Login success: ${universityUser.universityId} | mustChangePassword: ${universityUser.mustChangePassword}',
+      );
 
-    if (!mounted) return;
+      await PushNotificationService.saveCurrentToken();
 
-    ScaffoldMessenger.of(context).clearSnackBars();
+      if (!mounted) {
+        return;
+      }
 
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      '/home',
-      (route) => false,
-    );
-  } on AuthException catch (error) {
-    _showMessage(
-      error.message,
-      isError: true,
-    );
-  } catch (error) {
-    _showMessage(
-      error.toString(),
-      isError: true,
-    );
-  } finally {
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+      ScaffoldMessenger.of(context).clearSnackBars();
+
+      if (universityUser.mustChangePassword) {
+        _showMessage(
+          'Temporary password detected. Please change your password.',
+        );
+
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/security', (route) => false);
+
+        return;
+      }
+
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+    } on AuthException catch (error) {
+      _showMessage(error.message, isError: true);
+    } catch (error) {
+      _showMessage(error.toString(), isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-}
 
   // =====================================================
   // SHOW MESSAGE
@@ -128,73 +137,23 @@ Future<void> _handleLogin() async {
             padding: const EdgeInsets.symmetric(horizontal: 28),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height -
+                minHeight:
+                    MediaQuery.of(context).size.height -
                     MediaQuery.of(context).padding.top -
                     MediaQuery.of(context).padding.bottom,
               ),
               child: Column(
                 children: [
                   const SizedBox(height: 42),
-
-                  // =====================================================
-                  // TOP LOGO SECTION
-                  // =====================================================
-
                   _buildLogoSection(),
-
                   const SizedBox(height: 34),
-
-                  // =====================================================
-                  // WELCOME TEXT
-                  // =====================================================
-
-                  const Text(
-                    'Welcome Back!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 27,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    'Login using your university credentials',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.62),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-
+                  _buildWelcomeText(),
                   const SizedBox(height: 30),
-
-                  // =====================================================
-                  // LOGIN FORM
-                  // =====================================================
-
                   _buildLoginForm(),
-
                   const SizedBox(height: 22),
-
-                  // =====================================================
-                  // LOGIN BUTTON
-                  // =====================================================
-
                   _buildLoginButton(),
-
                   const SizedBox(height: 24),
-
-                  // =====================================================
-                  // UNIVERSITY NOTE
-                  // =====================================================
-
                   _buildUniversityNote(),
-
                   const SizedBox(height: 30),
                 ],
               ),
@@ -227,10 +186,7 @@ Future<void> _handleLogin() async {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(30),
-            child: Image.asset(
-              AppAssets.parkutemLogo,
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset(AppAssets.parkutemLogo, fit: BoxFit.cover),
           ),
         ),
         const SizedBox(height: 22),
@@ -274,6 +230,37 @@ Future<void> _handleLogin() async {
   }
 
   // =====================================================
+  // WELCOME TEXT
+  // =====================================================
+
+  Widget _buildWelcomeText() {
+    return Column(
+      children: [
+        const Text(
+          'Welcome Back!',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 27,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Login using your university ID or email',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.62),
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // =====================================================
   // LOGIN FORM
   // =====================================================
 
@@ -282,10 +269,13 @@ Future<void> _handleLogin() async {
       children: [
         _LoginInputField(
           controller: _idController,
-          hintText: 'Student or Staff ID',
+          hintText: 'Student ID, Staff ID, or Email',
           icon: Icons.badge_outlined,
           keyboardType: TextInputType.text,
           enabled: !_isLoading,
+          onSubmitted: (_) {
+            FocusScope.of(context).nextFocus();
+          },
         ),
         const SizedBox(height: 14),
         _LoginInputField(
@@ -313,77 +303,79 @@ Future<void> _handleLogin() async {
           ),
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            GestureDetector(
-              onTap: _isLoading
-                  ? null
-                  : () {
-                      setState(() {
-                        _rememberMe = !_rememberMe;
-                      });
-                    },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 21,
-                height: 21,
-                decoration: BoxDecoration(
-                  color:
-                      _rememberMe ? AppTheme.primaryCyan : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: _rememberMe
-                        ? AppTheme.primaryCyan
-                        : Colors.white.withValues(alpha: 0.35),
-                    width: 1.4,
-                  ),
-                  boxShadow: _rememberMe
-                      ? [
-                          BoxShadow(
-                            color:
-                                AppTheme.primaryCyan.withValues(alpha: 0.35),
-                            blurRadius: 12,
-                          ),
-                        ]
-                      : [],
-                ),
-                child: _rememberMe
-                    ? const Icon(
-                        Icons.check_rounded,
-                        color: Colors.white,
-                        size: 16,
-                      )
-                    : null,
+        _buildLoginOptions(),
+      ],
+    );
+  }
+
+  // =====================================================
+  // LOGIN OPTIONS
+  // =====================================================
+
+  Widget _buildLoginOptions() {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: _isLoading
+              ? null
+              : () {
+                  setState(() {
+                    _rememberMe = !_rememberMe;
+                  });
+                },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 21,
+            height: 21,
+            decoration: BoxDecoration(
+              color: _rememberMe ? AppTheme.primaryCyan : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _rememberMe
+                    ? AppTheme.primaryCyan
+                    : Colors.white.withValues(alpha: 0.35),
+                width: 1.4,
               ),
+              boxShadow: _rememberMe
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.primaryCyan.withValues(alpha: 0.35),
+                        blurRadius: 12,
+                      ),
+                    ]
+                  : [],
             ),
-            const SizedBox(width: 9),
-            Text(
-              'Remember me',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.88),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+            child: _rememberMe
+                ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                : null,
+          ),
+        ),
+        const SizedBox(width: 9),
+        Text(
+          'Remember me',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.88),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const Spacer(),
+        GestureDetector(
+          onTap: _isLoading
+              ? null
+              : () {
+                  _showMessage(
+                    'Please contact admin to reset your temporary password.',
+                  );
+                },
+          child: const Text(
+            'Forgot Password?',
+            style: TextStyle(
+              color: AppTheme.primaryCyan,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
             ),
-            const Spacer(),
-            GestureDetector(
-              onTap: _isLoading
-                  ? null
-                  : () {
-                      _showMessage(
-                        'Password reset will use university/admin support later.',
-                      );
-                    },
-              child: const Text(
-                'Forgot Password?',
-                style: TextStyle(
-                  color: AppTheme.primaryCyan,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ],
     );
@@ -400,10 +392,7 @@ Future<void> _handleLogin() async {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [
-              AppTheme.primaryCyan,
-              AppTheme.primaryBlue,
-            ],
+            colors: [AppTheme.primaryCyan, AppTheme.primaryBlue],
           ),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
@@ -457,9 +446,7 @@ Future<void> _handleLogin() async {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.055),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.10),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -473,7 +460,7 @@ Future<void> _handleLogin() async {
           Expanded(
             child: Text(
               'Only preloaded UTeM student/staff accounts can access this app. '
-              'Students use matric ID, while staff use staff ID. No public registration is available.',
+              'Use your matric/staff ID or email with the temporary password provided by admin.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.64),
                 fontSize: 12.5,
@@ -519,9 +506,7 @@ class _LoginInputField extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.055),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: TextField(
         controller: controller,
@@ -529,7 +514,9 @@ class _LoginInputField extends StatelessWidget {
         obscureText: obscureText,
         keyboardType: keyboardType,
         onSubmitted: onSubmitted,
-        textInputAction: obscureText ? TextInputAction.done : TextInputAction.next,
+        textInputAction: obscureText
+            ? TextInputAction.done
+            : TextInputAction.next,
         style: const TextStyle(
           color: Colors.white,
           fontSize: 15,

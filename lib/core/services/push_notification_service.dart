@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../firebase_options.dart';
+import 'auth_service.dart';
 import 'supabase_service.dart';
 
 // =====================================================
@@ -18,9 +19,7 @@ import 'supabase_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   debugPrint('Background notification received: ${message.messageId}');
 }
@@ -39,11 +38,11 @@ class PushNotificationService {
 
   static const AndroidNotificationChannel _androidChannel =
       AndroidNotificationChannel(
-    'parkutem_alerts',
-    'ParkUTeM Alerts',
-    description: 'Parking, ANPR, reservation, and wallet notifications.',
-    importance: Importance.high,
-  );
+        'parkutem_alerts',
+        'ParkUTeM Alerts',
+        description: 'Parking, ANPR, reservation, and wallet notifications.',
+        importance: Importance.high,
+      );
 
   // =====================================================
   // INIT
@@ -74,11 +73,7 @@ class PushNotificationService {
   // =====================================================
 
   static Future<void> _requestPermission() async {
-    await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    await _messaging.requestPermission(alert: true, badge: true, sound: true);
   }
 
   // =====================================================
@@ -103,7 +98,8 @@ class PushNotificationService {
     if (Platform.isAndroid) {
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.createNotificationChannel(_androidChannel);
     }
   }
@@ -115,7 +111,9 @@ class PushNotificationService {
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
     final RemoteNotification? notification = message.notification;
 
-    if (notification == null) return;
+    if (notification == null) {
+      return;
+    }
 
     await _localNotifications.show(
       id: notification.hashCode,
@@ -147,7 +145,7 @@ class PushNotificationService {
   }
 
   // =====================================================
-  // FCM TOKEN
+  // SAVE CURRENT FCM TOKEN
   // =====================================================
 
   static Future<void> saveCurrentToken() async {
@@ -155,31 +153,38 @@ class PushNotificationService {
 
     debugPrint('FCM TOKEN: $token');
 
-    if (token == null) return;
+    if (token == null || token.trim().isEmpty) {
+      return;
+    }
 
     await _saveTokenToSupabase(token);
   }
 
-  static Future<void> _saveTokenToSupabase(String token) async {
-    final client = SupabaseService.client;
-    final user = client.auth.currentUser;
+  // =====================================================
+  // SAVE TOKEN TO SUPABASE
+  // =====================================================
 
-    if (user == null) {
-      debugPrint('No logged-in user. FCM token not saved yet.');
+  static Future<void> _saveTokenToSupabase(String token) async {
+    final currentUser = await AuthService().getCurrentUniversityUser();
+
+    if (currentUser == null || currentUser.universityId.trim().isEmpty) {
+      debugPrint('No custom university user session. FCM token not saved yet.');
       return;
     }
 
-    await client.from('user_notification_tokens').upsert(
-      {
-        'user_id': user.id,
-        'fcm_token': token,
-        'platform': Platform.operatingSystem,
-        'is_active': true,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
-      onConflict: 'fcm_token',
-    );
+    try {
+      await SupabaseService.client.rpc(
+        'save_university_user_notification_token',
+        params: {
+          'p_university_id': currentUser.universityId,
+          'p_fcm_token': token,
+          'p_platform': Platform.operatingSystem,
+        },
+      );
 
-    debugPrint('FCM token saved to Supabase.');
+      debugPrint('FCM token saved for ${currentUser.universityId}.');
+    } catch (error) {
+      debugPrint('FCM token was not saved: $error');
+    }
   }
 }

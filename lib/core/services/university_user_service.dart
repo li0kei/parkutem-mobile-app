@@ -3,37 +3,21 @@
 // =====================================================
 
 import '../../models/university_user.dart';
-import 'supabase_service.dart';
+import 'auth_service.dart';
 
 // =====================================================
 // UNIVERSITY USER SERVICE
 // =====================================================
 
 class UniversityUserService {
-  final _client = SupabaseService.client;
+  final AuthService _authService = AuthService();
 
   // =====================================================
   // GET CURRENT USER PROFILE
   // =====================================================
 
   Future<UniversityUser?> getCurrentUserProfile() async {
-    final String? email = _client.auth.currentUser?.email;
-
-    if (email == null || email.trim().isEmpty) {
-      return null;
-    }
-
-    final Map<String, dynamic>? data = await _client
-        .from('university_users')
-        .select()
-        .eq('email', email.trim())
-        .maybeSingle();
-
-    if (data == null) {
-      return null;
-    }
-
-    return UniversityUser.fromJson(data);
+    return _authService.getCurrentUniversityUser();
   }
 
   // =====================================================
@@ -41,17 +25,9 @@ class UniversityUserService {
   // =====================================================
 
   Future<void> updateLastActivity() async {
-    final String? email = _client.auth.currentUser?.email;
-
-    if (email == null || email.trim().isEmpty) {
-      return;
-    }
-
-    await _client
-        .from('university_users')
-        .update({
-          'last_activity_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('email', email.trim());
+    // Custom mobile login does not use Supabase Auth session.
+    // Last activity is already updated during verify_university_login().
+    // Keep this as no-op to avoid RLS/auth.currentUser issue.
+    return;
   }
 }

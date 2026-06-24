@@ -11,6 +11,8 @@ import '../config/supabase_config.dart';
 // =====================================================
 
 class SupabaseService {
+  SupabaseService._();
+
   static SupabaseClient get client => Supabase.instance.client;
 
   static Future<void> initialize() async {

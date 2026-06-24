@@ -4,6 +4,7 @@
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'auth_service.dart';
 import 'supabase_service.dart';
 
 // =====================================================
@@ -12,6 +13,7 @@ import 'supabase_service.dart';
 
 class WalletService {
   final SupabaseClient _client = SupabaseService.client;
+  final AuthService _authService = AuthService();
 
   // =====================================================
   // PROCESS WALLET TOP UP
@@ -21,27 +23,99 @@ class WalletService {
     required double amount,
     String paymentMethod = 'simulated',
   }) async {
+    final currentUser = await _authService.getCurrentUniversityUser();
+
+    if (currentUser == null || currentUser.universityId.trim().isEmpty) {
+      throw const AuthException('No active user session found.');
+    }
+
     if (amount < 5) {
       throw const AuthException('Minimum top up amount is RM5.00.');
     }
 
-    final List<dynamic> records = await _client.rpc(
-      'process_wallet_topup',
-      params: {
-        'p_amount': amount,
-        'p_payment_method': paymentMethod,
-      },
-    );
+    try {
+      final dynamic response = await _client.rpc(
+        'process_university_user_wallet_topup',
+        params: {
+          'p_university_id': currentUser.universityId,
+          'p_amount': amount,
+          'p_payment_method': paymentMethod,
+        },
+      );
 
-    if (records.isEmpty) {
+      final Map<String, dynamic> data = _parseTopUpResponse(response);
+
+      return WalletTopUpResult.fromJson(data);
+    } catch (error) {
+      throw AuthException(_cleanErrorMessage(error));
+    }
+  }
+
+  // =====================================================
+  // PARSE TOP UP RESPONSE
+  // =====================================================
+
+  Map<String, dynamic> _parseTopUpResponse(dynamic response) {
+    if (response == null) {
       throw const AuthException('Wallet top up failed. No result returned.');
     }
 
-    final Map<String, dynamic> data = Map<String, dynamic>.from(
-      records.first as Map,
-    );
+    if (response is Map<String, dynamic>) {
+      return response;
+    }
 
-    return WalletTopUpResult.fromJson(data);
+    if (response is Map) {
+      return Map<String, dynamic>.from(response);
+    }
+
+    if (response is List && response.isNotEmpty) {
+      final dynamic firstRecord = response.first;
+
+      if (firstRecord is Map<String, dynamic>) {
+        return firstRecord;
+      }
+
+      if (firstRecord is Map) {
+        return Map<String, dynamic>.from(firstRecord);
+      }
+    }
+
+    throw const AuthException('Wallet top up failed. Invalid result format.');
+  }
+
+  // =====================================================
+  // CLEAN ERROR MESSAGE
+  // =====================================================
+
+  String _cleanErrorMessage(Object error) {
+    final String rawMessage = error.toString();
+
+    if (rawMessage.contains('No active user session')) {
+      return 'No active user session found.';
+    }
+
+    if (rawMessage.contains('Minimum top up amount')) {
+      return 'Minimum top up amount is RM5.00.';
+    }
+
+    if (rawMessage.contains('University user not found')) {
+      return 'University user not found.';
+    }
+
+    if (rawMessage.contains('Account is not active')) {
+      return 'This account is not active. Please contact admin.';
+    }
+
+    if (rawMessage.contains('Could not find the function')) {
+      return 'Wallet top up function is not ready in Supabase.';
+    }
+
+    return rawMessage
+        .replaceAll('AuthException(message: ', '')
+        .replaceAll('PostgrestException(message: ', '')
+        .replaceAll('Exception: ', '')
+        .replaceAll(')', '')
+        .trim();
   }
 }
 
@@ -72,7 +146,9 @@ class WalletTopUpResult {
   }
 
   static double _toDouble(dynamic value) {
-    if (value == null) return 0;
+    if (value == null) {
+      return 0;
+    }
 
     if (value is num) {
       return value.toDouble();
