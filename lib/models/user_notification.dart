@@ -130,6 +130,6 @@ class UserNotification {
 
     if (parsed == null) return null;
 
-    return parsed.toUtc().add(const Duration(hours: 8));
+    return parsed.toLocal();
   }
 }

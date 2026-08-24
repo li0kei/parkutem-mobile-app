@@ -52,11 +52,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
   final double _fixedReservationFee = 2.00;
   final double _parkingFeePerHour = 1.00;
 
-  final List<String> _durations = const [
-    '1 Hour',
-    '2 Hours',
-    '3 Hours',
-  ];
+  final List<String> _durations = const ['1 Hour', '2 Hours', '3 Hours'];
 
   final List<TimeOfDay> _presetStartTimes = const [
     TimeOfDay(hour: 8, minute: 0),
@@ -163,10 +159,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
     final List<String> sortedCodes = zoneCodes.toList()
       ..sort((a, b) => a.compareTo(b));
 
-    return [
-      'All',
-      ...sortedCodes,
-    ];
+    return ['All', ...sortedCodes];
   }
 
   String _formatZoneLabel(String zoneCode) {
@@ -213,8 +206,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
     final int startMinutes =
         (_customStartTime!.hour * 60) + _customStartTime!.minute;
 
-    final int endMinutes =
-        (_customEndTime!.hour * 60) + _customEndTime!.minute;
+    final int endMinutes = (_customEndTime!.hour * 60) + _customEndTime!.minute;
 
     return endMinutes - startMinutes;
   }
@@ -263,8 +255,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
   // =====================================================
 
   double get _parkingFee {
-    final TimeOfDay? startTime =
-        _isCustomTimeSlot ? _customStartTime : _selectedPresetStartTime;
+    final TimeOfDay? startTime = _isCustomTimeSlot
+        ? _customStartTime
+        : _selectedPresetStartTime;
 
     final TimeOfDay? endTime = _isCustomTimeSlot
         ? _customEndTime
@@ -285,8 +278,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
       return 0.00;
     }
 
-    final int chargedStartMinutes =
-        startMinutes < chargeStartMinutes ? chargeStartMinutes : startMinutes;
+    final int chargedStartMinutes = startMinutes < chargeStartMinutes
+        ? chargeStartMinutes
+        : startMinutes;
 
     final int chargeableMinutes = endMinutes - chargedStartMinutes;
 
@@ -344,9 +338,11 @@ class _ReservationScreenState extends State<ReservationScreen> {
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: DateTime(now.year, now.month, now.day).add(
-        const Duration(days: 60),
-      ),
+      lastDate: DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).add(const Duration(days: 60)),
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
@@ -411,18 +407,13 @@ class _ReservationScreenState extends State<ReservationScreen> {
   }
 
   DateTime _combineDateAndTime(DateTime date, TimeOfDay time) {
-    return DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time.hour,
-      time.minute,
-    );
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
 
   DateTime get _reservationStartAt {
-    final TimeOfDay startTime =
-        _isCustomTimeSlot ? _customStartTime! : _selectedPresetStartTime;
+    final TimeOfDay startTime = _isCustomTimeSlot
+        ? _customStartTime!
+        : _selectedPresetStartTime;
 
     return _combineDateAndTime(_selectedDate, startTime);
   }
@@ -504,10 +495,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
     }
 
     setState(() {
-      _setCustomTimeSlot(
-        startTime: startTime,
-        endTime: endTime,
-      );
+      _setCustomTimeSlot(startTime: startTime, endTime: endTime);
     });
   }
 
@@ -653,10 +641,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            AppTheme.primaryBlue,
-            Color(0xFF056BF1),
-          ],
+          colors: [AppTheme.primaryBlue, Color(0xFF056BF1)],
         ),
         borderRadius: BorderRadius.circular(26),
         boxShadow: [
@@ -780,9 +765,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
         child: const Padding(
           padding: EdgeInsets.symmetric(vertical: 24),
           child: Center(
-            child: CircularProgressIndicator(
-              color: AppTheme.primaryBlue,
-            ),
+            child: CircularProgressIndicator(color: AppTheme.primaryBlue),
           ),
         ),
       );
@@ -879,17 +862,11 @@ class _ReservationScreenState extends State<ReservationScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
       ),
       child: const Column(
         children: [
-          Icon(
-            Icons.event_busy_rounded,
-            color: Color(0xFF94A3B8),
-            size: 38,
-          ),
+          Icon(Icons.event_busy_rounded, color: Color(0xFF94A3B8), size: 38),
           SizedBox(height: 10),
           Text(
             'No available bay in this zone',
@@ -930,9 +907,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: const Color(0xFFE2E8F0),
-            ),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: Row(
             children: [
@@ -1111,10 +1086,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
             color: _parkingFee > 0 ? const Color(0xFFF59E0B) : Colors.white,
           ),
           const SizedBox(height: 14),
-          Divider(
-            color: Colors.white.withValues(alpha: 0.12),
-            height: 1,
-          ),
+          Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
           const SizedBox(height: 14),
           _PaymentRow(
             label: 'Total to Pay',
@@ -1138,9 +1110,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
       decoration: BoxDecoration(
         color: AppTheme.primaryBlue.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppTheme.primaryBlue.withValues(alpha: 0.14),
-        ),
+        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.14)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1155,7 +1125,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
             child: Text(
               'Reservation fee is a fixed one-time charge when students or staff book a bay in advance. '
               'Normal student/staff parking is free from 7:00 AM to 7:00 PM without reservation. '
-              'Parking fee after 7:00 PM is calculated for reserved time slots in this prototype.',
+              'Parking fee after 7:00 PM is calculated from the reserved time slot when applicable.',
               style: TextStyle(
                 color: const Color(0xFF0F172A).withValues(alpha: 0.74),
                 fontSize: 12.4,
@@ -1180,10 +1150,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [
-              AppTheme.primaryCyan,
-              AppTheme.primaryBlue,
-            ],
+            colors: [AppTheme.primaryCyan, AppTheme.primaryBlue],
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
@@ -1246,7 +1213,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
       return;
     }
 
-    if (_reservationStartAt.isBefore(DateTime.now().add(const Duration(minutes: 5)))) {
+    if (_reservationStartAt.isBefore(
+      DateTime.now().add(const Duration(minutes: 5)),
+    )) {
       _showMessage('Please choose a future reservation time.');
       return;
     }
@@ -1256,12 +1225,12 @@ class _ReservationScreenState extends State<ReservationScreen> {
     });
 
     try {
-      final ReservationResult result =
-          await _reservationService.createCurrentUserReservation(
-        bayId: _selectedBay!.id,
-        reservationStartAt: _reservationStartAt,
-        reservationEndAt: _reservationEndAt,
-      );
+      final ReservationResult result = await _reservationService
+          .createCurrentUserReservation(
+            bayId: _selectedBay!.id,
+            reservationStartAt: _reservationStartAt,
+            reservationEndAt: _reservationEndAt,
+          );
 
       if (!mounted) return;
 
@@ -1308,10 +1277,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
             'Parking fee after 7PM: RM${result.after7ParkingFee.toStringAsFixed(2)}\n'
             'Total paid: RM${result.totalPaid.toStringAsFixed(2)}\n'
             'Wallet balance: RM${result.newWalletBalance.toStringAsFixed(2)}',
-            style: const TextStyle(
-              color: Color(0xFF475569),
-              height: 1.45,
-            ),
+            style: const TextStyle(color: Color(0xFF475569), height: 1.45),
           ),
           actions: [
             TextButton(
@@ -1350,9 +1316,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(20, 0, 20, 90),
         backgroundColor: AppTheme.primaryBlue,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -1413,10 +1377,7 @@ class _SectionContainer extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _SectionContainer({
-    required this.title,
-    required this.child,
-  });
+  const _SectionContainer({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -1426,9 +1387,7 @@ class _SectionContainer extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.055),
@@ -1682,7 +1641,9 @@ class _TimeSlotCard extends StatelessWidget {
                   Text(
                     slot,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF0F172A),
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF0F172A),
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),

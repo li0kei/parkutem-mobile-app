@@ -1,18 +1,12 @@
-// =====================================================
-// IMPORTS
-// =====================================================
-
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/services/parking_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/parking_bay.dart';
+import '../../models/parking_zone.dart';
 import '../../widgets/app_bottom_navigation.dart';
-import '../../widgets/parking_bay_card.dart';
-
-// =====================================================
-// PARKING SCREEN
-// =====================================================
 
 class ParkingScreen extends StatefulWidget {
   const ParkingScreen({super.key});
@@ -21,823 +15,310 @@ class ParkingScreen extends StatefulWidget {
   State<ParkingScreen> createState() => _ParkingScreenState();
 }
 
-// =====================================================
-// PARKING SCREEN STATE
-// =====================================================
-
 class _ParkingScreenState extends State<ParkingScreen> {
+  static const LatLng _campusCenter = LatLng(2.3083, 102.3177);
+
   final ParkingService _parkingService = ParkingService();
 
-  List<ParkingBay> _parkingBays = [];
+  List<ParkingBay> _bays = [];
+  List<ParkingZone> _zones = [];
 
   String _selectedZone = 'All';
   ParkingBayStatus? _selectedStatus;
 
   bool _isLoading = true;
-  String? _errorMessage;
+  String? _error;
   DateTime? _lastLoadedAt;
-
-  // =====================================================
-  // INIT STATE
-  // =====================================================
 
   @override
   void initState() {
     super.initState();
-    _loadParkingBays();
+    _load();
   }
 
-  // =====================================================
-  // LOAD PARKING BAYS
-  // =====================================================
-
-  Future<void> _loadParkingBays() async {
+  Future<void> _load() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _error = null;
     });
 
     try {
-      final List<ParkingBay> bays = await _parkingService.getParkingBays();
+      final results = await Future.wait<dynamic>([
+        _parkingService.getParkingBays(),
+        _parkingService.getParkingZonesForMap(),
+      ]);
 
       if (!mounted) return;
 
+      final bays = results[0] as List<ParkingBay>;
+      final zones = results[1] as List<ParkingZone>;
+
       setState(() {
-        _parkingBays = bays;
+        _bays = bays;
+        _zones = zones;
         _lastLoadedAt = DateTime.now();
         _isLoading = false;
 
-        if (_selectedZone != 'All' &&
-            !_availableZoneCodes.contains(_selectedZone)) {
+        if (_selectedZone != 'All' && !_zoneCodes.contains(_selectedZone)) {
           _selectedZone = 'All';
         }
       });
     } catch (error) {
       if (!mounted) return;
-
       setState(() {
-        _errorMessage = error.toString();
+        _error = error.toString();
         _isLoading = false;
       });
     }
   }
 
-  // =====================================================
-  // FILTER DATA
-  // =====================================================
+  List<String> get _zoneCodes {
+    final values = <String>{};
 
-  List<String> get _availableZoneCodes {
-    final Set<String> codes = {};
-
-    for (final ParkingBay bay in _parkingBays) {
-      final String? zoneCode = bay.zoneCode;
-
-      if (zoneCode != null && zoneCode.trim().isNotEmpty && zoneCode != '-') {
-        codes.add(zoneCode);
+    for (final bay in _bays) {
+      final code = bay.zoneCode?.trim();
+      if (code != null && code.isNotEmpty && code != '-') {
+        values.add(code);
       }
     }
 
-    final List<String> sortedCodes = codes.toList()
-      ..sort((a, b) => a.compareTo(b));
+    final result = values.toList()..sort((a, b) => a.compareTo(b));
 
-    return sortedCodes;
-  }
-
-  List<String> get _zones {
-    return [
-      'All',
-      ..._availableZoneCodes,
-    ];
+    return result;
   }
 
   List<ParkingBay> get _filteredBays {
-    return _parkingBays.where((bay) {
-      final bool zoneMatch =
-          _selectedZone == 'All' || bay.zoneCode == _selectedZone;
-
-      final bool statusMatch =
+    return _bays.where((bay) {
+      final zoneMatch = _selectedZone == 'All' || bay.zoneCode == _selectedZone;
+      final statusMatch =
           _selectedStatus == null || bay.status == _selectedStatus;
-
       return zoneMatch && statusMatch;
     }).toList();
   }
 
-  // =====================================================
-  // SUMMARY COUNTS
-  // =====================================================
+  int get _availableCount =>
+      _bays.where((bay) => bay.status == ParkingBayStatus.available).length;
 
-  int get _totalCount => _parkingBays.length;
+  int get _occupiedCount =>
+      _bays.where((bay) => bay.status == ParkingBayStatus.occupied).length;
 
-  int get _availableCount => _parkingBays
-      .where((bay) => bay.status == ParkingBayStatus.available)
-      .length;
+  int get _reservedCount =>
+      _bays.where((bay) => bay.status == ParkingBayStatus.reserved).length;
 
-  int get _occupiedCount => _parkingBays
-      .where((bay) => bay.status == ParkingBayStatus.occupied)
-      .length;
-
-  int get _reservedCount => _parkingBays
-      .where((bay) => bay.status == ParkingBayStatus.reserved)
-      .length;
-
-  String get _updatedLabel {
-    if (_lastLoadedAt == null) {
-      return 'Not updated yet';
-    }
-
-    return 'Updated just now';
+  void _navigateFromBottomBar(int index) {
+    final routes = ['/home', '/parking', '/reserve', '/wallet', '/profile'];
+    if (index == 1) return;
+    Navigator.of(context).pushReplacementNamed(routes[index]);
   }
 
-  String _formatZoneLabel(String zoneCode) {
-    if (zoneCode == 'All') {
-      return 'All';
-    }
-
-    return 'Zone $zoneCode';
+  void _selectZone(String zoneCode) {
+    setState(() => _selectedZone = zoneCode);
   }
-
-  // =====================================================
-  // BUILD
-  // =====================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FB),
+      backgroundColor: AppTheme.canvas,
+      appBar: AppBar(
+        title: const Text(
+          'Live Parking',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        actions: [
+          IconButton(
+            onPressed: _load,
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
             Expanded(
               child: RefreshIndicator(
-                onRefresh: _loadParkingBays,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(context),
-                      const SizedBox(height: 20),
-                      if (_isLoading)
-                        _buildLoadingState()
-                      else if (_errorMessage != null)
-                        _buildErrorState()
-                      else ...[
-                        _buildSummaryCard(),
-                        const SizedBox(height: 22),
-                        _buildZoneFilters(),
-                        const SizedBox(height: 16),
-                        _buildStatusFilters(),
-                        const SizedBox(height: 22),
-                        _buildSectionHeader(),
-                        const SizedBox(height: 14),
-                        _buildBayGrid(),
-                        const SizedBox(height: 20),
-                        _buildLegendCard(),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            _buildBottomNavigation(context),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // =====================================================
-  // HEADER
-  // =====================================================
-
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: () => Navigator.of(context).pushReplacementNamed('/home'),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.055),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.arrow_back_rounded,
-              color: Color(0xFF0F172A),
-              size: 24,
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Parking Availability',
-                style: TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'View available, occupied and reserved bays',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        InkWell(
-          onTap: _loadParkingBays,
-          borderRadius: BorderRadius.circular(15),
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(
-              Icons.refresh_rounded,
-              color: AppTheme.primaryBlue,
-              size: 24,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // =====================================================
-  // LOADING STATE
-  // =====================================================
-
-  Widget _buildLoadingState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 60),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
-      ),
-      child: const Column(
-        children: [
-          CircularProgressIndicator(
-            color: AppTheme.primaryBlue,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Loading parking bays...',
-            style: TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // ERROR STATE
-  // =====================================================
-
-  Widget _buildErrorState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFFECACA),
-        ),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: Color(0xFFEF4444),
-            size: 38,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Unable to load parking bays',
-            style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _errorMessage ?? 'Something went wrong.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 12.5,
-              height: 1.45,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _loadParkingBays,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Retry'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // SUMMARY CARD
-  // =====================================================
-
-  Widget _buildSummaryCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            AppTheme.primaryBlue,
-            Color(0xFF056BF1),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryBlue.withValues(alpha: 0.26),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Live Parking Overview',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Row(
+                onRefresh: _load,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
                   children: [
-                    Icon(
-                      Icons.circle,
-                      color: Color(0xFF22C55E),
-                      size: 8,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Supabase',
+                    const Text(
+                      'Live bay status and parking areas configured by ParkUTeM Admin.',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
+                        color: AppTheme.muted,
+                        fontSize: 13.5,
+                        height: 1.4,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    if (_isLoading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 100),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (_error != null)
+                      _buildError()
+                    else ...[
+                      _buildMap(),
+                      const SizedBox(height: 16),
+                      _buildSummary(),
+                      const SizedBox(height: 18),
+                      _buildZoneFilters(),
+                      const SizedBox(height: 12),
+                      _buildStatusFilters(),
+                      const SizedBox(height: 22),
+                      _buildListHeader(),
+                      const SizedBox(height: 10),
+                      _buildBayList(),
+                    ],
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              _SummaryItem(
-                value: _totalCount.toString(),
-                label: 'Total',
-                icon: Icons.local_parking_rounded,
-              ),
-              _SummaryItem(
-                value: _availableCount.toString(),
-                label: 'Available',
-                icon: Icons.check_circle_rounded,
-              ),
-              _SummaryItem(
-                value: _occupiedCount.toString(),
-                label: 'Occupied',
-                icon: Icons.directions_car_rounded,
-              ),
-              _SummaryItem(
-                value: _reservedCount.toString(),
-                label: 'Reserved',
-                icon: Icons.event_busy_rounded,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // ZONE FILTERS
-  // =====================================================
-
-  Widget _buildZoneFilters() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Parking Zone',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 42,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _zones.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final String zone = _zones[index];
-              final bool isSelected = zone == _selectedZone;
-
-              return _FilterPill(
-                label: _formatZoneLabel(zone),
-                isSelected: isSelected,
-                onTap: () {
-                  setState(() {
-                    _selectedZone = zone;
-                  });
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // =====================================================
-  // STATUS FILTERS
-  // =====================================================
-
-  Widget _buildStatusFilters() {
-    final List<_StatusFilterOption> options = [
-      const _StatusFilterOption(
-        label: 'All',
-        color: AppTheme.primaryBlue,
-        status: null,
-      ),
-      const _StatusFilterOption(
-        label: 'Available',
-        color: Color(0xFF22C55E),
-        status: ParkingBayStatus.available,
-      ),
-      const _StatusFilterOption(
-        label: 'Occupied',
-        color: Color(0xFFEF4444),
-        status: ParkingBayStatus.occupied,
-      ),
-      const _StatusFilterOption(
-        label: 'Reserved',
-        color: Color(0xFFF59E0B),
-        status: ParkingBayStatus.reserved,
-      ),
-      const _StatusFilterOption(
-        label: 'Maintenance',
-        color: Color(0xFF64748B),
-        status: ParkingBayStatus.maintenance,
-      ),
-    ];
-
-    return SizedBox(
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: options.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final _StatusFilterOption option = options[index];
-
-          return _StatusFilterPill(
-            label: option.label,
-            color: option.color,
-            isSelected: _selectedStatus == option.status,
-            onTap: () {
-              setState(() {
-                _selectedStatus = option.status;
-              });
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  // =====================================================
-  // SECTION HEADER
-  // =====================================================
-
-  Widget _buildSectionHeader() {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            'Parking Bays (${_filteredBays.length})',
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.3,
             ),
-          ),
+            AppBottomNavigation(currentIndex: 1, onTap: _navigateFromBottomBar),
+          ],
         ),
-        Text(
-          _updatedLabel,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  // =====================================================
-  // BAY GRID
-  // =====================================================
-
-  Widget _buildBayGrid() {
-    final List<ParkingBay> bays = _filteredBays;
-
-    if (bays.isEmpty) {
+  Widget _buildMap() {
+    if (_zones.isEmpty) {
       return Container(
+        height: 170,
         width: double.infinity,
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: const Color(0xFFE8EEF7),
-          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.border),
         ),
         child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search_off_rounded,
-              color: Color(0xFF94A3B8),
-              size: 40,
-            ),
+            Icon(Icons.map_outlined, color: AppTheme.muted, size: 34),
             SizedBox(height: 10),
             Text(
-              'No parking bays found',
+              'Parking map is not available right now.',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF0F172A),
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w800,
               ),
             ),
             SizedBox(height: 4),
             Text(
-              'Try another zone or status filter.',
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-              ),
+              'The live bay list below is still available.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.muted, fontSize: 12.5),
             ),
           ],
         ),
       );
     }
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: bays.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 14,
-        crossAxisSpacing: 14,
-        mainAxisExtent: 235,
-      ),
-      itemBuilder: (context, index) {
-        final ParkingBay bay = bays[index];
+    final markers = _zones.map((zone) {
+      final selected = _selectedZone == zone.zoneCode;
 
-        return ParkingBayCard(
-          bay: bay,
-          onReserve: () => _handleReserve(bay),
-        );
-      },
-    );
-  }
-
-  // =====================================================
-  // LEGEND CARD
-  // =====================================================
-
-  Widget _buildLegendCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Status Legend',
-            style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          SizedBox(height: 12),
-          Wrap(
-            spacing: 16,
-            runSpacing: 10,
-            children: [
-              _LegendItem(
-                color: Color(0xFF22C55E),
-                label: 'Available',
-              ),
-              _LegendItem(
-                color: Color(0xFFEF4444),
-                label: 'Occupied',
-              ),
-              _LegendItem(
-                color: Color(0xFFF59E0B),
-                label: 'Reserved',
-              ),
-              _LegendItem(
-                color: Color(0xFF64748B),
-                label: 'Maintenance',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // RESERVE HANDLER
-  // =====================================================
-
-  void _handleReserve(ParkingBay bay) {
-    Navigator.of(context).pushNamed(
-      '/reserve',
-      arguments: bay,
-    );
-  }
-
-  // =====================================================
-  // BOTTOM NAVIGATION
-  // =====================================================
-
-  Widget _buildBottomNavigation(BuildContext context) {
-    return AppBottomNavigation(
-      currentIndex: 1,
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.of(context).pushReplacementNamed('/home');
-          return;
-        }
-
-        if (index == 1) return;
-
-        if (index == 2) {
-          Navigator.of(context).pushNamed('/reserve');
-          return;
-        }
-
-        if (index == 3) {
-          Navigator.of(context).pushReplacementNamed('/wallet');
-          return;
-        }
-
-        if (index == 4) {
-          Navigator.of(context).pushNamed('/profile');
-          return;
-        }
-
-        _showComingSoon(context, _navName(index));
-      },
-    );
-  }
-
-  String _navName(int index) {
-    switch (index) {
-      case 2:
-        return 'Reservation';
-      case 3:
-        return 'Wallet';
-      case 4:
-        return 'Profile';
-      default:
-        return 'Feature';
-    }
-  }
-
-  // =====================================================
-  // SHOW COMING SOON
-  // =====================================================
-
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        elevation: 0,
-        backgroundColor: Colors.white,
-        margin: const EdgeInsets.fromLTRB(18, 0, 18, 22),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(
-            color: Color(0xFFE8EEF7),
-          ),
-        ),
-        content: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
+      return Marker(
+        point: LatLng(zone.latitude!, zone.longitude!),
+        width: 54,
+        height: 54,
+        child: Semantics(
+          button: true,
+          label: '${zone.displayName}, Zone ${zone.zoneCode}',
+          child: GestureDetector(
+            onTap: () => _selectZone(zone.zoneCode),
+            child: Container(
               decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(12),
+                color: selected ? AppTheme.primaryBlue : Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? Colors.white : AppTheme.primaryBlue,
+                  width: 3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              child: const Icon(
-                Icons.info_rounded,
-                color: AppTheme.primaryBlue,
-                size: 20,
+              child: Icon(
+                Icons.local_parking_rounded,
+                color: selected ? Colors.white : AppTheme.primaryBlue,
+                size: 25,
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '$feature screen will be added next.',
-                style: const TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  height: 1.35,
+          ),
+        ),
+      );
+    }).toList();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        height: 245,
+        decoration: BoxDecoration(
+          color: const Color(0xFFEFF4F8),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Stack(
+          children: [
+            FlutterMap(
+              options: MapOptions(
+                initialCenter: _campusCenter,
+                initialZoom: 15.8,
+                minZoom: 14,
+                maxZoom: 19,
+                interactionOptions: InteractionOptions(
+                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                ),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.parkutem_app',
+                  maxZoom: 19,
+                ),
+                MarkerLayer(markers: markers),
+              ],
+            ),
+            Positioned(
+              left: 10,
+              top: 10,
+              child: Material(
+                color: Colors.white.withValues(alpha: 0.94),
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  onTap: () => _selectZone('All'),
+                  borderRadius: BorderRadius.circular(10),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    child: Text(
+                      'Show all',
+                      style: TextStyle(
+                        color: AppTheme.primaryBlue,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 8,
+              bottom: 7,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                color: Colors.white.withValues(alpha: 0.88),
+                child: const Text(
+                  '© OpenStreetMap contributors',
+                  style: TextStyle(color: AppTheme.muted, fontSize: 8.5),
                 ),
               ),
             ),
@@ -846,208 +327,461 @@ class _ParkingScreenState extends State<ParkingScreen> {
       ),
     );
   }
-}
 
-// =====================================================
-// STATUS FILTER OPTION
-// =====================================================
-
-class _StatusFilterOption {
-  final String label;
-  final Color color;
-  final ParkingBayStatus? status;
-
-  const _StatusFilterOption({
-    required this.label,
-    required this.color,
-    required this.status,
-  });
-}
-
-// =====================================================
-// SUMMARY ITEM
-// =====================================================
-
-class _SummaryItem extends StatelessWidget {
-  final String value;
-  final String label;
-  final IconData icon;
-
-  const _SummaryItem({
-    required this.value,
-    required this.label,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
+  Widget _buildSummary() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
         children: [
-          Icon(
-            icon,
-            color: Colors.white,
-            size: 22,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 21,
-              fontWeight: FontWeight.w900,
+          Expanded(
+            child: _SummaryItem(
+              label: 'Available',
+              value: '$_availableCount',
+              color: const Color(0xFF067647),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.76),
-              fontSize: 10.8,
-              fontWeight: FontWeight.w700,
+          const _SummaryDivider(),
+          Expanded(
+            child: _SummaryItem(
+              label: 'Occupied',
+              value: '$_occupiedCount',
+              color: const Color(0xFFB42318),
+            ),
+          ),
+          const _SummaryDivider(),
+          Expanded(
+            child: _SummaryItem(
+              label: 'Reserved',
+              value: '$_reservedCount',
+              color: const Color(0xFFB54708),
             ),
           ),
         ],
       ),
     );
   }
-}
 
-// =====================================================
-// FILTER PILL
-// =====================================================
+  Widget _buildZoneFilters() {
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _FilterChip(
+            label: 'All areas',
+            selected: _selectedZone == 'All',
+            onTap: () => _selectZone('All'),
+          ),
+          for (final code in _zoneCodes) ...[
+            const SizedBox(width: 8),
+            _FilterChip(
+              label: 'Zone $code',
+              selected: _selectedZone == code,
+              onTap: () => _selectZone(code),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-class _FilterPill extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
+  Widget _buildStatusFilters() {
+    final entries = <(String, ParkingBayStatus?)>[
+      ('All status', null),
+      ('Available', ParkingBayStatus.available),
+      ('Occupied', ParkingBayStatus.occupied),
+      ('Reserved', ParkingBayStatus.reserved),
+      ('Maintenance', ParkingBayStatus.maintenance),
+    ];
 
-  const _FilterPill({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: entries.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final entry = entries[index];
+          return _FilterChip(
+            label: entry.$1,
+            selected: _selectedStatus == entry.$2,
+            compact: true,
+            onTap: () => setState(() => _selectedStatus = entry.$2),
+          );
+        },
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+  Widget _buildListHeader() {
+    final timestamp = _lastLoadedAt;
+    final time = timestamp == null
+        ? ''
+        : '${timestamp.hour.toString().padLeft(2, '0')}:'
+              '${timestamp.minute.toString().padLeft(2, '0')}';
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '${_filteredBays.length} bays',
+            style: const TextStyle(
+              color: AppTheme.ink,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        if (time.isNotEmpty)
+          Text(
+            'Updated $time',
+            style: const TextStyle(color: AppTheme.muted, fontSize: 11.5),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBayList() {
+    final bays = _filteredBays;
+
+    if (bays.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 18),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryBlue : Colors.white,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryBlue : const Color(0xFFE2E8F0),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: const Text(
+          'No parking bays match these filters.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppTheme.muted),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (int index = 0; index < bays.length; index++) ...[
+          _BayRow(
+            bay: bays[index],
+            onReserve: bays[index].status == ParkingBayStatus.available
+                ? () => Navigator.of(
+                    context,
+                  ).pushNamed('/reserve', arguments: bays[index])
+                : null,
+            onTap: () => _showBayDetails(bays[index]),
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppTheme.primaryBlue.withValues(alpha: 0.20),
-                    blurRadius: 14,
-                    offset: const Offset(0, 7),
+          if (index != bays.length - 1) const SizedBox(height: 9),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _showBayDetails(ParkingBay bay) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(22, 4, 22, 26),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                bay.bayNumber,
+                style: const TextStyle(
+                  color: AppTheme.ink,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(bay.zone, style: const TextStyle(color: AppTheme.muted)),
+              const SizedBox(height: 18),
+              _DetailLine(label: 'Status', value: bay.status.label),
+              if (bay.hasLiveSensor)
+                _DetailLine(label: 'Sensor', value: bay.sensorStatus),
+              if ((bay.currentPlateNumber ?? '').trim().isNotEmpty)
+                _DetailLine(
+                  label: 'Current vehicle',
+                  value: bay.currentPlateNumber!,
+                ),
+              const SizedBox(height: 18),
+              if (bay.status == ParkingBayStatus.available)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(
+                        this.context,
+                      ).pushNamed('/reserve', arguments: bay);
+                    },
+                    child: const Text('Reserve this bay'),
                   ),
-                ]
-              : [],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
-            fontSize: 12.5,
-            fontWeight: FontWeight.w800,
+                ),
+            ],
           ),
-        ),
+        );
+      },
+    );
+  }
+
+  Widget _buildError() {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off_outlined, color: AppTheme.muted, size: 34),
+          const SizedBox(height: 10),
+          const Text(
+            'Unable to load live parking.',
+            style: TextStyle(color: AppTheme.ink, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton(onPressed: _load, child: const Text('Try again')),
+        ],
       ),
     );
   }
 }
 
-// =====================================================
-// STATUS FILTER PILL
-// =====================================================
-
-class _StatusFilterPill extends StatelessWidget {
+class _SummaryItem extends StatelessWidget {
   final String label;
+  final String value;
   final Color color;
-  final bool isSelected;
-  final VoidCallback onTap;
 
-  const _StatusFilterPill({
+  const _SummaryItem({
     required this.label,
+    required this.value,
     required this.color,
-    required this.isSelected,
-    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 42,
-        padding: const EdgeInsets.symmetric(horizontal: 13),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? color : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? color : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Text(
-          label,
+    return Column(
+      children: [
+        Text(
+          value,
           style: TextStyle(
-            color: isSelected ? Colors.white : color,
-            fontSize: 11.5,
+            color: color,
+            fontSize: 22,
             fontWeight: FontWeight.w900,
           ),
         ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.muted,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryDivider extends StatelessWidget {
+  const _SummaryDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 1, height: 36, color: AppTheme.border);
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool compact;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppTheme.primaryBlue : Colors.white,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 12 : 14,
+            vertical: compact ? 9 : 10,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppTheme.primaryBlue : AppTheme.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : AppTheme.ink,
+              fontSize: compact ? 11 : 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-// =====================================================
-// LEGEND ITEM
-// =====================================================
+class _BayRow extends StatelessWidget {
+  final ParkingBay bay;
+  final VoidCallback onTap;
+  final VoidCallback? onReserve;
 
-class _LegendItem extends StatelessWidget {
-  final Color color;
-  final String label;
-
-  const _LegendItem({
-    required this.color,
-    required this.label,
+  const _BayRow({
+    required this.bay,
+    required this.onTap,
+    required this.onReserve,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 9,
-          height: 9,
+    final statusColor = switch (bay.status) {
+      ParkingBayStatus.available => const Color(0xFF067647),
+      ParkingBayStatus.occupied => const Color(0xFFB42318),
+      ParkingBayStatus.reserved => const Color(0xFFB54708),
+      ParkingBayStatus.maintenance => AppTheme.muted,
+    };
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Icon(
+                  Icons.local_parking_rounded,
+                  color: AppTheme.primaryBlue,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      bay.bayNumber,
+                      style: const TextStyle(
+                        color: AppTheme.ink,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      bay.zone,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.muted,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  bay.status.label,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (onReserve != null) ...[
+                const SizedBox(width: 6),
+                IconButton(
+                  onPressed: onReserve,
+                  tooltip: 'Reserve',
+                  icon: const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class _DetailLine extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailLine({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: const TextStyle(color: AppTheme.muted)),
           ),
-        ),
-      ],
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.ink,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

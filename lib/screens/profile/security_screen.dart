@@ -531,7 +531,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
           _InfoRow(
             icon: Icons.storage_rounded,
             label: 'Account Source',
-            value: 'Supabase university_users record',
+            value: 'ParkUTeM university account record',
           ),
           _InfoRow(
             icon: Icons.verified_rounded,
@@ -558,7 +558,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
           _ActionTile(
             icon: Icons.devices_rounded,
             title: 'Device Sessions',
-            subtitle: 'View active device sessions placeholder',
+            subtitle: 'View the session managed by this device',
             onTap: mustChangePassword
                 ? () {
                     _showMessage(

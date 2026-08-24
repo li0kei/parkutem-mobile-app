@@ -2,12 +2,7 @@
 // WALLET TRANSACTION TYPE
 // =====================================================
 
-enum WalletTransactionType {
-  topUp,
-  reservationFee,
-  parkingFee,
-  refund,
-}
+enum WalletTransactionType { topUp, reservationFee, parkingFee, refund }
 
 // =====================================================
 // WALLET TRANSACTION MODEL
@@ -42,32 +37,23 @@ class WalletTransaction {
         json['payment_method']?.toString() ?? 'simulated';
     final String paymentStatus =
         json['payment_status']?.toString() ?? 'pending';
-    final String reference =
-        json['transaction_reference']?.toString() ?? '-';
+    final String reference = json['transaction_reference']?.toString() ?? '-';
 
     return WalletTransaction(
       id: json['id']?.toString() ?? '',
-      title: _mapTitle(
-        paymentType: paymentType,
-        paymentStatus: paymentStatus,
-      ),
+      title: _mapTitle(paymentType: paymentType, paymentStatus: paymentStatus),
       description: _mapDescription(
         paymentMethod: paymentMethod,
         paymentStatus: paymentStatus,
         reference: reference,
       ),
       amount: _toDouble(json['amount']),
-      isDebit: _isDebit(
-        paymentType: paymentType,
-        paymentStatus: paymentStatus,
-      ),
-      dateTime: _toDateTime(json['paid_at']) ??
+      isDebit: _isDebit(paymentType: paymentType, paymentStatus: paymentStatus),
+      dateTime:
+          _toDateTime(json['paid_at']) ??
           _toDateTime(json['created_at']) ??
           DateTime.now(),
-      type: _mapType(
-        paymentType: paymentType,
-        paymentStatus: paymentStatus,
-      ),
+      type: _mapType(paymentType: paymentType, paymentStatus: paymentStatus),
     );
   }
 
@@ -169,6 +155,6 @@ class WalletTransaction {
   static DateTime? _toDateTime(dynamic value) {
     if (value == null) return null;
 
-    return DateTime.tryParse(value.toString());
+    return DateTime.tryParse(value.toString())?.toLocal();
   }
 }

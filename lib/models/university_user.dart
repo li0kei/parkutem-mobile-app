@@ -172,6 +172,6 @@ class UniversityUser {
       return null;
     }
 
-    return DateTime.tryParse(value.toString());
+    return DateTime.tryParse(value.toString())?.toLocal();
   }
 }

@@ -55,8 +55,7 @@ class VehicleRecord {
       userType: json['user_type']?.toString() ?? '-',
       faculty: json['faculty']?.toString() ?? '-',
       stickerStatus: json['sticker_status']?.toString() ?? 'pending',
-      anprAccessStatus:
-          json['anpr_access_status']?.toString() ?? 'disabled',
+      anprAccessStatus: json['anpr_access_status']?.toString() ?? 'disabled',
       registeredAt: _toDateTime(json['registered_at']),
       expiryAt: _toDateTime(json['expiry_at']),
       remarks: json['remarks']?.toString(),
@@ -92,6 +91,6 @@ class VehicleRecord {
   static DateTime? _toDateTime(dynamic value) {
     if (value == null) return null;
 
-    return DateTime.tryParse(value.toString());
+    return DateTime.tryParse(value.toString())?.toLocal();
   }
 }

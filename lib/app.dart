@@ -19,7 +19,6 @@ import 'screens/profile/notification_settings_screen.dart';
 import 'screens/profile/parking_history_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/profile/security_screen.dart';
-import 'screens/profile/university_portal_screen.dart';
 import 'screens/profile/vehicle_registration_screen.dart';
 
 // =====================================================
@@ -42,7 +41,6 @@ class ParkUTeMApp extends StatelessWidget {
       // =====================================================
       // THEME
       // =====================================================
-
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light,
@@ -50,13 +48,11 @@ class ParkUTeMApp extends StatelessWidget {
       // =====================================================
       // STARTUP
       // =====================================================
-
       home: const SplashScreen(),
 
       // =====================================================
       // ROUTES
       // =====================================================
-
       routes: {
         '/auth': (context) => const AuthGate(),
         '/login': (context) => const LoginScreen(),
@@ -74,20 +70,15 @@ class ParkUTeMApp extends StatelessWidget {
         '/security': (context) => const SecurityScreen(),
         '/parking-history': (context) => const ParkingHistoryScreen(),
         '/help-support': (context) => const HelpSupportScreen(),
-        '/university-portal': (context) => const UniversityPortalScreen(),
         '/device-sessions': (context) => const DeviceSessionsScreen(),
-        '/vehicle-registration': (context) =>
-            const VehicleRegistrationScreen(),
+        '/vehicle-registration': (context) => const VehicleRegistrationScreen(),
       },
 
       // =====================================================
       // UNKNOWN ROUTE FALLBACK
       // =====================================================
-
       onUnknownRoute: (settings) {
-        return MaterialPageRoute(
-          builder: (context) => const AuthGate(),
-        );
+        return MaterialPageRoute(builder: (context) => const AuthGate());
       },
     );
   }

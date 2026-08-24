@@ -1,7 +1,3 @@
-// =====================================================
-// IMPORTS
-// =====================================================
-
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -11,87 +7,70 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../firebase_options.dart';
 import 'auth_service.dart';
+import 'notification_preference_service.dart';
 import 'supabase_service.dart';
-
-// =====================================================
-// BACKGROUND HANDLER
-// =====================================================
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  debugPrint('Background notification received: ${message.messageId}');
+  debugPrint('Background notification received.');
 }
-
-// =====================================================
-// PUSH NOTIFICATION SERVICE
-// =====================================================
 
 class PushNotificationService {
   PushNotificationService._();
 
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  static final NotificationPreferenceService _preferenceService =
+      NotificationPreferenceService();
 
   static const AndroidNotificationChannel _androidChannel =
       AndroidNotificationChannel(
         'parkutem_alerts',
         'ParkUTeM Alerts',
-        description: 'Parking, ANPR, reservation, and wallet notifications.',
+        description: 'Parking, ANPR, reservation, wallet and support alerts.',
         importance: Importance.high,
       );
-
-  // =====================================================
-  // INIT
-  // =====================================================
 
   static Future<void> init() async {
     await _requestPermission();
     await _initLocalNotifications();
-
     await saveCurrentToken();
 
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
-    final RemoteMessage? initialMessage = await _messaging.getInitialMessage();
-
+    final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
       _handleNotificationTap(initialMessage);
     }
 
-    _messaging.onTokenRefresh.listen((token) async {
-      await _saveTokenToSupabase(token);
-    });
+    _messaging.onTokenRefresh.listen(_saveTokenToSupabase);
   }
-
-  // =====================================================
-  // REQUEST PERMISSION
-  // =====================================================
 
   static Future<void> _requestPermission() async {
-    await _messaging.requestPermission(alert: true, badge: true, sound: true);
+    final preferences = await _preferenceService.load();
+    if (!preferences.enabled) return;
+
+    await _messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: preferences.sound,
+    );
   }
 
-  // =====================================================
-  // LOCAL NOTIFICATION SETUP
-  // =====================================================
-
   static Future<void> _initLocalNotifications() async {
-    const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const InitializationSettings notificationSettings = InitializationSettings(
-      android: androidSettings,
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
     );
 
+    const settings = InitializationSettings(android: androidSettings);
+
     await _localNotifications.initialize(
-      settings: notificationSettings,
+      settings: settings,
       onDidReceiveNotificationResponse: (response) {
-        debugPrint('Notification tapped payload: ${response.payload}');
+        debugPrint('ParkUTeM notification opened.');
       },
     );
 
@@ -104,14 +83,14 @@ class PushNotificationService {
     }
   }
 
-  // =====================================================
-  // FOREGROUND MESSAGE
-  // =====================================================
-
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    final RemoteNotification? notification = message.notification;
+    final notification = message.notification;
+    if (notification == null) return;
 
-    if (notification == null) {
+    final preferences = await _preferenceService.load();
+    final type = message.data['type']?.toString();
+
+    if (!preferences.allowsType(type)) {
       return;
     }
 
@@ -126,32 +105,20 @@ class PushNotificationService {
           channelDescription: _androidChannel.description,
           importance: Importance.high,
           priority: Priority.high,
+          playSound: preferences.sound,
+          enableVibration: preferences.vibration,
         ),
       ),
       payload: message.data.toString(),
     );
   }
 
-  // =====================================================
-  // NOTIFICATION TAP
-  // =====================================================
-
   static void _handleNotificationTap(RemoteMessage message) {
-    final String? type = message.data['type'];
-    final String? targetId = message.data['target_id'];
-
-    debugPrint('Notification tapped type: $type');
-    debugPrint('Notification tapped target id: $targetId');
+    debugPrint('Notification opened: ${message.data['type'] ?? 'system'}');
   }
 
-  // =====================================================
-  // SAVE CURRENT FCM TOKEN
-  // =====================================================
-
   static Future<void> saveCurrentToken() async {
-    final String? token = await _messaging.getToken();
-
-    debugPrint('FCM TOKEN: $token');
+    final token = await _messaging.getToken();
 
     if (token == null || token.trim().isEmpty) {
       return;
@@ -160,15 +127,10 @@ class PushNotificationService {
     await _saveTokenToSupabase(token);
   }
 
-  // =====================================================
-  // SAVE TOKEN TO SUPABASE
-  // =====================================================
-
   static Future<void> _saveTokenToSupabase(String token) async {
     final currentUser = await AuthService().getCurrentUniversityUser();
 
     if (currentUser == null || currentUser.universityId.trim().isEmpty) {
-      debugPrint('No custom university user session. FCM token not saved yet.');
       return;
     }
 
@@ -181,10 +143,8 @@ class PushNotificationService {
           'p_platform': Platform.operatingSystem,
         },
       );
-
-      debugPrint('FCM token saved for ${currentUser.universityId}.');
     } catch (error) {
-      debugPrint('FCM token was not saved: $error');
+      debugPrint('FCM token sync failed.');
     }
   }
 }

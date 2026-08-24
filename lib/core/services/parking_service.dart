@@ -1,38 +1,21 @@
-// =====================================================
-// IMPORTS
-// =====================================================
-
 import '../../models/parking_bay.dart';
+import '../../models/parking_zone.dart';
 import 'supabase_service.dart';
-
-// =====================================================
-// PARKING SERVICE
-// =====================================================
 
 class ParkingService {
   final _client = SupabaseService.client;
 
-  // =====================================================
-  // GET PARKING BAYS
-  // =====================================================
-
   Future<List<ParkingBay>> getParkingBays() async {
-    final List<dynamic> records = await _client.rpc(
-      'get_mobile_parking_bays',
-    );
+    final dynamic response = await _client.rpc('get_mobile_parking_bays');
 
-    return records.map((record) {
-      final Map<String, dynamic> data = Map<String, dynamic>.from(
-        record as Map,
-      );
+    if (response is! List) {
+      return [];
+    }
 
-      return ParkingBay.fromJson(data);
+    return response.map((record) {
+      return ParkingBay.fromJson(Map<String, dynamic>.from(record as Map));
     }).toList();
   }
-
-  // =====================================================
-  // GET PARKING BAYS BY ZONE
-  // =====================================================
 
   Future<List<ParkingBay>> getParkingBaysByZone(String zoneCode) async {
     final List<ParkingBay> bays = await getParkingBays();
@@ -45,4 +28,35 @@ class ParkingService {
       return bay.zoneCode?.toLowerCase() == zoneCode.toLowerCase();
     }).toList();
   }
-}                                        
+
+  // Map coordinates are managed by Admin in parking_zones. The bay RPC does
+  // not return map coordinates, so the mobile app reads the public zone
+  // metadata separately. Failure here must never block the live bay list.
+  Future<List<ParkingZone>> getParkingZonesForMap() async {
+    try {
+      final dynamic response = await _client
+          .from('parking_zones')
+          .select(
+            'id, zone_code, zone_name, location_name, map_label, '
+            'map_latitude, map_longitude, is_active',
+          )
+          .eq('is_active', true)
+          .order('zone_code', ascending: true);
+
+      if (response is! List) {
+        return [];
+      }
+
+      return response
+          .map((record) {
+            return ParkingZone.fromJson(
+              Map<String, dynamic>.from(record as Map),
+            );
+          })
+          .where((zone) => zone.hasCoordinates)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+}

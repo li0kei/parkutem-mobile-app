@@ -13,7 +13,6 @@ import '../../models/wallet_transaction.dart';
 import '../../widgets/app_bottom_navigation.dart';
 import '../../widgets/wallet_transaction_tile.dart';
 
-
 // =====================================================
 // WALLET SCREEN
 // =====================================================
@@ -34,7 +33,7 @@ class _WalletScreenState extends State<WalletScreen> {
   final WalletService _walletService = WalletService();
 
   final WalletTransactionService _walletTransactionService =
-    WalletTransactionService();
+      WalletTransactionService();
 
   UniversityUser? _profile;
   late List<WalletTransaction> _transactions;
@@ -44,12 +43,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
   bool _isTopUpProcessing = false;
 
-  final List<double> _topUpAmounts = const [
-    5.00,
-    10.00,
-    20.00,
-    50.00,
-  ];
+  final List<double> _topUpAmounts = const [5.00, 10.00, 20.00, 50.00];
 
   // =====================================================
   // INIT STATE
@@ -74,11 +68,14 @@ class _WalletScreenState extends State<WalletScreen> {
     });
 
     try {
-      final UniversityUser? profile =
-          await _universityUserService.getCurrentUserProfile();
-      
+      final results = await Future.wait<dynamic>([
+        _universityUserService.getCurrentUserProfile(),
+        _walletTransactionService.getCurrentUserTransactions(),
+      ]);
+
+      final UniversityUser? profile = results[0] as UniversityUser?;
       final List<WalletTransaction> transactions =
-          await _walletTransactionService.getCurrentUserTransactions();
+          results[1] as List<WalletTransaction>;
 
       if (!mounted) return;
 
@@ -92,10 +89,10 @@ class _WalletScreenState extends State<WalletScreen> {
       }
 
       setState(() {
-      _profile = profile;
-      _transactions = transactions;
-      _isLoading = false;
-    });
+        _profile = profile;
+        _transactions = transactions;
+        _isLoading = false;
+      });
     } catch (error) {
       if (!mounted) return;
 
@@ -262,15 +259,11 @@ class _WalletScreenState extends State<WalletScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
       ),
       child: const Column(
         children: [
-          CircularProgressIndicator(
-            color: AppTheme.primaryBlue,
-          ),
+          CircularProgressIndicator(color: AppTheme.primaryBlue),
           SizedBox(height: 16),
           Text(
             'Loading wallet...',
@@ -296,9 +289,7 @@ class _WalletScreenState extends State<WalletScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFFECACA),
-        ),
+        border: Border.all(color: const Color(0xFFFECACA)),
       ),
       child: Column(
         children: [
@@ -356,10 +347,7 @@ class _WalletScreenState extends State<WalletScreen> {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF0F172A),
-            Color(0xFF111D35),
-          ],
+          colors: [Color(0xFF0F172A), Color(0xFF111D35)],
         ),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
@@ -395,7 +383,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: const Text(
-                  'Supabase Balance',
+                  'Available Balance',
                   style: TextStyle(
                     color: AppTheme.primaryCyan,
                     fontSize: 11.2,
@@ -498,15 +486,11 @@ class _WalletScreenState extends State<WalletScreen> {
               label: const Text('Custom Top Up'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.primaryBlue,
-                side: const BorderSide(
-                  color: Color(0xFFDCE6F2),
-                ),
+                side: const BorderSide(color: Color(0xFFDCE6F2)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                textStyle: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                ),
+                textStyle: const TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
           ),
@@ -526,9 +510,7 @@ class _WalletScreenState extends State<WalletScreen> {
       decoration: BoxDecoration(
         color: AppTheme.primaryBlue.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppTheme.primaryBlue.withValues(alpha: 0.14),
-        ),
+        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.14)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,7 +524,7 @@ class _WalletScreenState extends State<WalletScreen> {
           Expanded(
             child: Text(
               'Reservation fee is charged when students or staff book a bay in advance. '
-              'Parking fee is only charged for actual parking usage after 7:00 PM.',
+              'Parking fee after 7:00 PM is calculated from the reserved time slot when applicable.',
               style: TextStyle(
                 color: const Color(0xFF0F172A).withValues(alpha: 0.74),
                 fontSize: 12.4,
@@ -598,9 +580,7 @@ class _WalletScreenState extends State<WalletScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: const Color(0xFFE8EEF7),
-          ),
+          border: Border.all(color: const Color(0xFFE8EEF7)),
         ),
         child: const Column(
           children: [
@@ -634,64 +614,59 @@ class _WalletScreenState extends State<WalletScreen> {
   // TOP UP WALLET
   // =====================================================
 
- Future<void> _goToPaymentMethod(double amount) async {
-  if (amount < 5) {
-    _showMessage('Minimum top up amount is RM5.00.');
-    return;
-  }
+  Future<void> _goToPaymentMethod(double amount) async {
+    if (amount < 5) {
+      _showMessage('Minimum top up amount is RM5.00.');
+      return;
+    }
 
-  final Object? result = await Navigator.of(context).pushNamed(
-    '/payment-method',
-    arguments: amount,
-  );
-
-  if (!mounted) return;
-
-  if (result is double) {
-    await _processTopUp(result);
-  }
-}
-
-// =====================================================
-// PROCESS TOP UP
-// =====================================================
-
-Future<void> _processTopUp(double amount) async {
-  if (_isTopUpProcessing) return;
-
-  setState(() {
-    _isTopUpProcessing = true;
-  });
-
-  try {
-    final WalletTopUpResult result = await _walletService.processTopUp(
-      amount: amount,
-      paymentMethod: 'simulated',
-    );
-
-    await _loadWallet();
+    final Object? result = await Navigator.of(
+      context,
+    ).pushNamed('/payment-method', arguments: amount);
 
     if (!mounted) return;
 
-    _showMessage(
-      '${_formatRM(amount)} added successfully. Ref: ${result.transactionReference}',
-    );
-  } catch (error) {
-    if (!mounted) return;
-    
-    _showMessage(
-      'Top up failed: $error',
-      isError: true,
-    );
-      
-  } finally {
-    if (mounted) {
-      setState(() {
-        _isTopUpProcessing = false;
-      });
+    if (result is double) {
+      await _processTopUp(result);
     }
   }
-}
+
+  // =====================================================
+  // PROCESS TOP UP
+  // =====================================================
+
+  Future<void> _processTopUp(double amount) async {
+    if (_isTopUpProcessing) return;
+
+    setState(() {
+      _isTopUpProcessing = true;
+    });
+
+    try {
+      final WalletTopUpResult result = await _walletService.processTopUp(
+        amount: amount,
+        paymentMethod: 'simulated',
+      );
+
+      await _loadWallet();
+
+      if (!mounted) return;
+
+      _showMessage(
+        '${_formatRM(amount)} added successfully. Ref: ${result.transactionReference}',
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      _showMessage('Top up failed: $error', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isTopUpProcessing = false;
+        });
+      }
+    }
+  }
   // =====================================================
   // CUSTOM TOP UP DIALOG
   // =====================================================
@@ -717,9 +692,7 @@ Future<void> _processTopUp(double amount) async {
           ),
           content: TextField(
             controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: const TextStyle(
               color: Color(0xFF0F172A),
               fontSize: 16,
@@ -747,15 +720,11 @@ Future<void> _processTopUp(double amount) async {
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(
-                  color: Color(0xFFE2E8F0),
-                ),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(
-                  color: Color(0xFFE2E8F0),
-                ),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -780,9 +749,7 @@ Future<void> _processTopUp(double amount) async {
             ),
             TextButton(
               onPressed: () {
-                final double? amount = double.tryParse(
-                  controller.text.trim(),
-                );
+                final double? amount = double.tryParse(controller.text.trim());
 
                 if (amount == null || amount <= 0) {
                   Navigator.of(dialogContext).pop();
@@ -816,65 +783,59 @@ Future<void> _processTopUp(double amount) async {
     );
   }
 
-// =====================================================
-// SHOW MESSAGE
-// =====================================================
+  // =====================================================
+  // SHOW MESSAGE
+  // =====================================================
 
-void _showMessage(
-  String message, {
-  bool isError = false,
-}) {
-  final Color color = isError ? const Color(0xFFEF4444) : AppTheme.primaryBlue;
-  final IconData icon =
-      isError ? Icons.error_rounded : Icons.check_circle_rounded;
+  void _showMessage(String message, {bool isError = false}) {
+    final Color color = isError
+        ? const Color(0xFFEF4444)
+        : AppTheme.primaryBlue;
+    final IconData icon = isError
+        ? Icons.error_rounded
+        : Icons.check_circle_rounded;
 
-  ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).clearSnackBars();
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      behavior: SnackBarBehavior.floating,
-      elevation: 0,
-      backgroundColor: Colors.white,
-      margin: const EdgeInsets.fromLTRB(18, 0, 18, 22),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(
-          color: Color(0xFFE8EEF7),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        margin: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Color(0xFFE8EEF7)),
         ),
-      ),
-      content: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(12),
+        content: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 20),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Color(0xFF0F172A),
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                height: 1.35,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  height: 1.35,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // =====================================================
   // BOTTOM NAVIGATION
@@ -929,10 +890,7 @@ class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _SectionCard({
-    required this.title,
-    required this.child,
-  });
+  const _SectionCard({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -942,9 +900,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.055),
@@ -996,17 +952,11 @@ class _WalletMiniInfo extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.10),
-          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: AppTheme.primaryCyan,
-              size: 20,
-            ),
+            Icon(icon, color: AppTheme.primaryCyan, size: 20),
             const SizedBox(width: 9),
             Expanded(
               child: Column(
@@ -1047,10 +997,7 @@ class _TopUpAmountCard extends StatelessWidget {
   final double amount;
   final VoidCallback onTap;
 
-  const _TopUpAmountCard({
-    required this.amount,
-    required this.onTap,
-  });
+  const _TopUpAmountCard({required this.amount, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1063,9 +1010,7 @@ class _TopUpAmountCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: const Color(0xFFE2E8F0),
-          ),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         child: Text(
           'RM${amount.toStringAsFixed(0)}',

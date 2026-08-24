@@ -29,7 +29,7 @@ class ProfileScreen extends StatefulWidget {
 // =====================================================
 
 class _ProfileScreenState extends State<ProfileScreen> {
- final UniversityUserService _universityUserService = UniversityUserService();
+  final UniversityUserService _universityUserService = UniversityUserService();
   final VehicleService _vehicleService = VehicleService();
   final AuthService _authService = AuthService();
 
@@ -59,12 +59,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-     final UniversityUser? profile =
-      await _universityUserService.getCurrentUserProfile();
+      final results = await Future.wait<dynamic>([
+        _universityUserService.getCurrentUserProfile(),
+        _vehicleService.getPrimaryVehicle(),
+        _universityUserService.updateLastActivity(),
+      ]);
 
-    final VehicleRecord? vehicle = await _vehicleService.getPrimaryVehicle();
-
-      await _universityUserService.updateLastActivity();
+      final UniversityUser? profile = results[0] as UniversityUser?;
+      final VehicleRecord? vehicle = results[1] as VehicleRecord?;
 
       if (!mounted) return;
 
@@ -77,11 +79,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-     setState(() {
-      _profile = profile;
-      _vehicle = vehicle;
-      _isLoading = false;
-    });
+      setState(() {
+        _profile = profile;
+        _vehicle = vehicle;
+        _isLoading = false;
+      });
     } catch (error) {
       if (!mounted) return;
 
@@ -93,20 +95,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // =====================================================
-// OPEN VEHICLE REGISTRATION
-// =====================================================
+  // OPEN VEHICLE REGISTRATION
+  // =====================================================
 
-Future<void> _openVehicleRegistration() async {
-  final Object? result = await Navigator.of(context).pushNamed(
-    '/vehicle-registration',
-  );
+  Future<void> _openVehicleRegistration() async {
+    final Object? result = await Navigator.of(
+      context,
+    ).pushNamed('/vehicle-registration');
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  if (result == true) {
-    await _loadProfile();
+    if (result == true) {
+      await _loadProfile();
+    }
   }
-}
 
   // =====================================================
   // HELPERS
@@ -137,16 +139,16 @@ Future<void> _openVehicleRegistration() async {
   }
 
   String _formatStatusLabel(String value) {
-  if (value.trim().isEmpty) return '-';
+    if (value.trim().isEmpty) return '-';
 
-  return value
-      .split('_')
-      .map((part) {
-        if (part.isEmpty) return part;
-        return '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}';
-      })
-      .join(' ');
-}
+    return value
+        .split('_')
+        .map((part) {
+          if (part.isEmpty) return part;
+          return '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}';
+        })
+        .join(' ');
+  }
 
   String _formatFacultyDepartment(UniversityUser profile) {
     if (profile.faculty == '-' && profile.department == '-') {
@@ -305,15 +307,11 @@ Future<void> _openVehicleRegistration() async {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
       ),
       child: const Column(
         children: [
-          CircularProgressIndicator(
-            color: AppTheme.primaryBlue,
-          ),
+          CircularProgressIndicator(color: AppTheme.primaryBlue),
           SizedBox(height: 16),
           Text(
             'Loading profile...',
@@ -339,9 +337,7 @@ Future<void> _openVehicleRegistration() async {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFFECACA),
-        ),
+        border: Border.all(color: const Color(0xFFFECACA)),
       ),
       child: Column(
         children: [
@@ -399,10 +395,7 @@ Future<void> _openVehicleRegistration() async {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            AppTheme.primaryBlue,
-            Color(0xFF056BF1),
-          ],
+          colors: [AppTheme.primaryBlue, Color(0xFF056BF1)],
         ),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
@@ -465,9 +458,7 @@ Future<void> _openVehicleRegistration() async {
             runSpacing: 8,
             children: [
               _LightProfileBadge(label: profile.universityId),
-              _LightProfileBadge(
-                label: profile.accountStatus.toUpperCase(),
-              ),
+              _LightProfileBadge(label: profile.accountStatus.toUpperCase()),
             ],
           ),
         ],
@@ -475,12 +466,111 @@ Future<void> _openVehicleRegistration() async {
     );
   }
 
-// =====================================================
-// VEHICLE STICKER CARD
-// =====================================================
+  // =====================================================
+  // VEHICLE STICKER CARD
+  // =====================================================
 
-Widget _buildVehicleStickerCard(VehicleRecord? vehicle) {
-  if (vehicle == null) {
+  Widget _buildVehicleStickerCard(VehicleRecord? vehicle) {
+    if (vehicle == null) {
+      return _SectionCard(
+        title: 'Vehicle & Sticker',
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(19),
+                  ),
+                  child: const Icon(
+                    Icons.directions_car_filled_rounded,
+                    color: AppTheme.primaryBlue,
+                    size: 31,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'No vehicle registered',
+                        style: TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontSize: 21,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Vehicle data will appear after sticker registration',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _StatusBadge(label: 'No Record', color: Color(0xFFF59E0B)),
+                _StatusBadge(label: 'ANPR Disabled', color: Color(0xFF94A3B8)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const _InfoNote(
+              text:
+                  'Register your vehicle first. Admin will review the sticker status and enable ANPR access after approval.',
+            ),
+
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: _openVehicleRegistration,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Register Vehicle'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final Color stickerColor = vehicle.stickerStatus == 'active'
+        ? const Color(0xFF22C55E)
+        : vehicle.stickerStatus == 'pending'
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFFEF4444);
+
+    final Color anprColor = vehicle.isAnprEnabled
+        ? AppTheme.primaryCyan
+        : const Color(0xFF94A3B8);
+
     return _SectionCard(
       title: 'Vehicle & Sticker',
       child: Column(
@@ -501,23 +591,23 @@ Widget _buildVehicleStickerCard(VehicleRecord? vehicle) {
                 ),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'No vehicle registered',
-                      style: TextStyle(
+                      vehicle.plateNumber,
+                      style: const TextStyle(
                         color: Color(0xFF0F172A),
-                        fontSize: 21,
+                        fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 0.2,
+                        letterSpacing: 0.4,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Vehicle data will appear after sticker registration',
-                      style: TextStyle(
+                      vehicle.vehicleDescription,
+                      style: const TextStyle(
                         color: Color(0xFF64748B),
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -529,139 +619,34 @@ Widget _buildVehicleStickerCard(VehicleRecord? vehicle) {
             ],
           ),
           const SizedBox(height: 16),
-          const Wrap(
+          Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               _StatusBadge(
-                label: 'No Record',
-                color: Color(0xFFF59E0B),
+                label: _formatStatusLabel(vehicle.stickerStatus),
+                color: stickerColor,
               ),
               _StatusBadge(
-                label: 'ANPR Disabled',
-                color: Color(0xFF94A3B8),
+                label: 'ANPR ${_formatStatusLabel(vehicle.anprAccessStatus)}',
+                color: anprColor,
+              ),
+              _StatusBadge(
+                label: vehicle.userType.toUpperCase(),
+                color: AppTheme.primaryBlue,
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const _InfoNote(
-            text:
-                'Register your vehicle first. Admin will review the sticker status and enable ANPR access after approval.',
-          ),
-          
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              onPressed: _openVehicleRegistration,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Register Vehicle'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
+          _InfoNote(
+            text: vehicle.isAnprEnabled
+                ? 'ANPR access is enabled. Your plate can be verified automatically at entry and exit.'
+                : 'ANPR access is not enabled yet. Please wait for admin approval or contact support.',
           ),
         ],
       ),
     );
   }
-
-  final Color stickerColor = vehicle.stickerStatus == 'active'
-      ? const Color(0xFF22C55E)
-      : vehicle.stickerStatus == 'pending'
-          ? const Color(0xFFF59E0B)
-          : const Color(0xFFEF4444);
-
-  final Color anprColor = vehicle.isAnprEnabled
-      ? AppTheme.primaryCyan
-      : const Color(0xFF94A3B8);
-
-  return _SectionCard(
-    title: 'Vehicle & Sticker',
-    child: Column(
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(19),
-              ),
-              child: const Icon(
-                Icons.directions_car_filled_rounded,
-                color: AppTheme.primaryBlue,
-                size: 31,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    vehicle.plateNumber,
-                    style: const TextStyle(
-                      color: Color(0xFF0F172A),
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    vehicle.vehicleDescription,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _StatusBadge(
-              label: _formatStatusLabel(vehicle.stickerStatus),
-              color: stickerColor,
-            ),
-            _StatusBadge(
-              label: 'ANPR ${_formatStatusLabel(vehicle.anprAccessStatus)}',
-              color: anprColor,
-            ),
-            _StatusBadge(
-              label: vehicle.userType.toUpperCase(),
-              color: AppTheme.primaryBlue,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _InfoNote(
-          text: vehicle.isAnprEnabled
-              ? 'ANPR access is enabled. Your plate can be verified automatically at entry and exit.'
-              : 'ANPR access is not enabled yet. Please wait for admin approval or contact support.',
-        ),
-      ],
-    ),
-  );
-}
   // =====================================================
   // ACCOUNT INFO CARD
   // =====================================================
@@ -702,50 +687,51 @@ Widget _buildVehicleStickerCard(VehicleRecord? vehicle) {
     );
   }
 
-// =====================================================
-// MENU SECTION
-// =====================================================
+  // =====================================================
+  // MENU SECTION
+  // =====================================================
 
-Widget _buildMenuSection(BuildContext context) {
-  return _SectionCard(
-    title: 'Account Settings',
-    child: Column(
-      children: [
-        _ProfileMenuTile(
-          icon: Icons.notifications_rounded,
-          title: 'Notifications',
-          subtitle: 'View parking alerts and system updates',
-          onTap: () => Navigator.of(context).pushNamed('/notifications'),
-        ),
-        _ProfileMenuTile(
-          icon: Icons.notifications_active_rounded,
-          title: 'Notification Settings',
-          subtitle: 'Manage parking alerts and reminders',
-          onTap: () => Navigator.of(context).pushNamed('/notification-settings'),
-        ),
-        _ProfileMenuTile(
-          icon: Icons.lock_rounded,
-          title: 'Security',
-          subtitle: 'Password managed by university portal',
-          onTap: () => Navigator.of(context).pushNamed('/security'),
-        ),
-        _ProfileMenuTile(
-          icon: Icons.receipt_long_rounded,
-          title: 'Parking History',
-          subtitle: 'View entry, exit and reservation logs',
-          onTap: () => Navigator.of(context).pushNamed('/parking-history'),
-        ),
-        _ProfileMenuTile(
-          icon: Icons.help_rounded,
-          title: 'Help & Support',
-          subtitle: 'Contact parking administrator',
-          onTap: () => Navigator.of(context).pushNamed('/help-support'),
-          showDivider: false,
-        ),
-      ],
-    ),
-  );
-}
+  Widget _buildMenuSection(BuildContext context) {
+    return _SectionCard(
+      title: 'Account Settings',
+      child: Column(
+        children: [
+          _ProfileMenuTile(
+            icon: Icons.notifications_rounded,
+            title: 'Notifications',
+            subtitle: 'View parking alerts and system updates',
+            onTap: () => Navigator.of(context).pushNamed('/notifications'),
+          ),
+          _ProfileMenuTile(
+            icon: Icons.notifications_active_rounded,
+            title: 'Notification Settings',
+            subtitle: 'Manage parking alerts and reminders',
+            onTap: () =>
+                Navigator.of(context).pushNamed('/notification-settings'),
+          ),
+          _ProfileMenuTile(
+            icon: Icons.lock_rounded,
+            title: 'Security',
+            subtitle: 'Change your ParkUTeM account password',
+            onTap: () => Navigator.of(context).pushNamed('/security'),
+          ),
+          _ProfileMenuTile(
+            icon: Icons.receipt_long_rounded,
+            title: 'Parking History',
+            subtitle: 'View entry, exit and reservation logs',
+            onTap: () => Navigator.of(context).pushNamed('/parking-history'),
+          ),
+          _ProfileMenuTile(
+            icon: Icons.help_rounded,
+            title: 'Help & Support',
+            subtitle: 'Contact parking administrator',
+            onTap: () => Navigator.of(context).pushNamed('/help-support'),
+            showDivider: false,
+          ),
+        ],
+      ),
+    );
+  }
 
   // =====================================================
   // LOGOUT BUTTON
@@ -761,17 +747,12 @@ Widget _buildMenuSection(BuildContext context) {
         label: const Text('Logout'),
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFFEF4444),
-          side: const BorderSide(
-            color: Color(0xFFFECACA),
-          ),
+          side: const BorderSide(color: Color(0xFFFECACA)),
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
         ),
       ),
     );
@@ -799,10 +780,7 @@ Widget _buildMenuSection(BuildContext context) {
           ),
           content: const Text(
             'You will return to the login screen.',
-            style: TextStyle(
-              color: Color(0xFF475569),
-              height: 1.45,
-            ),
+            style: TextStyle(color: Color(0xFF475569), height: 1.45),
           ),
           actions: [
             TextButton(
@@ -825,10 +803,7 @@ Widget _buildMenuSection(BuildContext context) {
 
                 if (!mounted) return;
 
-                navigator.pushNamedAndRemoveUntil(
-                  '/login',
-                  (route) => false,
-                );
+                navigator.pushNamedAndRemoveUntil('/login', (route) => false);
               },
               child: const Text(
                 'Logout',
@@ -886,10 +861,7 @@ class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _SectionCard({
-    required this.title,
-    required this.child,
-  });
+  const _SectionCard({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -899,9 +871,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.055),
@@ -937,9 +907,7 @@ class _SectionCard extends StatelessWidget {
 class _LightProfileBadge extends StatelessWidget {
   final String label;
 
-  const _LightProfileBadge({
-    required this.label,
-  });
+  const _LightProfileBadge({required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -970,10 +938,7 @@ class _StatusBadge extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _StatusBadge({
-    required this.label,
-    required this.color,
-  });
+  const _StatusBadge({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1002,9 +967,7 @@ class _StatusBadge extends StatelessWidget {
 class _InfoNote extends StatelessWidget {
   final String text;
 
-  const _InfoNote({
-    required this.text,
-  });
+  const _InfoNote({required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1014,9 +977,7 @@ class _InfoNote extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.primaryBlue.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.primaryBlue.withValues(alpha: 0.13),
-        ),
+        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.13)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1074,11 +1035,7 @@ class _ProfileInfoRow extends StatelessWidget {
                 color: AppTheme.primaryBlue.withValues(alpha: 0.09),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                icon,
-                color: AppTheme.primaryBlue,
-                size: 22,
-              ),
+              child: Icon(icon, color: AppTheme.primaryBlue, size: 22),
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -1109,10 +1066,7 @@ class _ProfileInfoRow extends StatelessWidget {
         ),
         if (showDivider) ...[
           const SizedBox(height: 13),
-          const Divider(
-            height: 1,
-            color: Color(0xFFE8EEF7),
-          ),
+          const Divider(height: 1, color: Color(0xFFE8EEF7)),
           const SizedBox(height: 13),
         ],
       ],
@@ -1155,11 +1109,7 @@ class _ProfileMenuTile extends StatelessWidget {
                   color: AppTheme.primaryBlue.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(15),
                 ),
-                child: Icon(
-                  icon,
-                  color: AppTheme.primaryBlue,
-                  size: 22,
-                ),
+                child: Icon(icon, color: AppTheme.primaryBlue, size: 22),
               ),
               const SizedBox(width: 13),
               Expanded(
@@ -1196,10 +1146,7 @@ class _ProfileMenuTile extends StatelessWidget {
         ),
         if (showDivider) ...[
           const SizedBox(height: 13),
-          const Divider(
-            height: 1,
-            color: Color(0xFFE8EEF7),
-          ),
+          const Divider(height: 1, color: Color(0xFFE8EEF7)),
           const SizedBox(height: 13),
         ],
       ],

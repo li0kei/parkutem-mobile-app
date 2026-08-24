@@ -11,45 +11,41 @@ class ParkingBayCard extends StatelessWidget {
   final ParkingBay bay;
   final VoidCallback? onReserve;
 
-  const ParkingBayCard({
-    super.key,
-    required this.bay,
-    this.onReserve,
-  });
+  const ParkingBayCard({super.key, required this.bay, this.onReserve});
 
   // =====================================================
   // STATUS COLOR
   // =====================================================
 
   Color get statusColor {
-  switch (bay.status) {
-    case ParkingBayStatus.available:
-      return const Color(0xFF22C55E);
-    case ParkingBayStatus.occupied:
-      return const Color(0xFFEF4444);
-    case ParkingBayStatus.reserved:
-      return const Color(0xFFF59E0B);
-    case ParkingBayStatus.maintenance:
-      return const Color(0xFF64748B);
+    switch (bay.status) {
+      case ParkingBayStatus.available:
+        return const Color(0xFF22C55E);
+      case ParkingBayStatus.occupied:
+        return const Color(0xFFEF4444);
+      case ParkingBayStatus.reserved:
+        return const Color(0xFFF59E0B);
+      case ParkingBayStatus.maintenance:
+        return const Color(0xFF64748B);
+    }
   }
-}
 
   // =====================================================
   // STATUS ICON
   // =====================================================
 
-IconData get statusIcon {
-  switch (bay.status) {
-    case ParkingBayStatus.available:
-      return Icons.check_circle_rounded;
-    case ParkingBayStatus.occupied:
-      return Icons.directions_car_filled_rounded;
-    case ParkingBayStatus.reserved:
-      return Icons.event_busy_rounded;
-    case ParkingBayStatus.maintenance:
-      return Icons.build_circle_rounded;
+  IconData get statusIcon {
+    switch (bay.status) {
+      case ParkingBayStatus.available:
+        return Icons.check_circle_rounded;
+      case ParkingBayStatus.occupied:
+        return Icons.directions_car_filled_rounded;
+      case ParkingBayStatus.reserved:
+        return Icons.event_busy_rounded;
+      case ParkingBayStatus.maintenance:
+        return Icons.build_circle_rounded;
+    }
   }
-}
 
   // =====================================================
   // BUILD
@@ -64,9 +60,7 @@ IconData get statusIcon {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.055),
@@ -81,7 +75,6 @@ IconData get statusIcon {
           // =====================================================
           // TOP ROW
           // =====================================================
-
           Row(
             children: [
               Container(
@@ -91,11 +84,7 @@ IconData get statusIcon {
                   color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  statusIcon,
-                  color: statusColor,
-                  size: 23,
-                ),
+                child: Icon(statusIcon, color: statusColor, size: 23),
               ),
               const Spacer(),
               Container(
@@ -114,7 +103,6 @@ IconData get statusIcon {
           // =====================================================
           // BAY NUMBER
           // =====================================================
-
           Text(
             bay.bayNumber,
             style: const TextStyle(
@@ -143,7 +131,6 @@ IconData get statusIcon {
           // =====================================================
           // STATUS BADGE
           // =====================================================
-
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
@@ -165,7 +152,6 @@ IconData get statusIcon {
           // =====================================================
           // RESERVE BUTTON
           // =====================================================
-
           SizedBox(
             width: double.infinity,
             height: 36,
@@ -173,10 +159,12 @@ IconData get statusIcon {
               onPressed: canReserve ? onReserve : null,
               style: ElevatedButton.styleFrom(
                 elevation: 0,
-                backgroundColor:
-                    canReserve ? AppTheme.primaryBlue : const Color(0xFFE2E8F0),
-                foregroundColor:
-                    canReserve ? Colors.white : const Color(0xFF94A3B8),
+                backgroundColor: canReserve
+                    ? AppTheme.primaryBlue
+                    : const Color(0xFFE2E8F0),
+                foregroundColor: canReserve
+                    ? Colors.white
+                    : const Color(0xFF94A3B8),
                 disabledBackgroundColor: const Color(0xFFE2E8F0),
                 disabledForegroundColor: const Color(0xFF94A3B8),
                 shape: RoundedRectangleBorder(

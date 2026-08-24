@@ -73,11 +73,14 @@ class _ParkingHistoryScreenState extends State<ParkingHistoryScreen> {
     });
 
     try {
-      final List<ReservationRecord> reservations =
-          await _reservationHistoryService.getCurrentUserReservations();
+      final results = await Future.wait<dynamic>([
+        _reservationHistoryService.getCurrentUserReservations(),
+        _anprLogService.getCurrentUserAnprLogs(),
+      ]);
 
-      final List<AnprLogRecord> anprLogs =
-          await _anprLogService.getCurrentUserAnprLogs();
+      final List<ReservationRecord> reservations =
+          results[0] as List<ReservationRecord>;
+      final List<AnprLogRecord> anprLogs = results[1] as List<AnprLogRecord>;
 
       if (!mounted) return;
 
@@ -267,15 +270,11 @@ class _ParkingHistoryScreenState extends State<ParkingHistoryScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
       ),
       child: const Column(
         children: [
-          CircularProgressIndicator(
-            color: AppTheme.primaryBlue,
-          ),
+          CircularProgressIndicator(color: AppTheme.primaryBlue),
           SizedBox(height: 16),
           Text(
             'Loading parking history...',
@@ -301,9 +300,7 @@ class _ParkingHistoryScreenState extends State<ParkingHistoryScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFFECACA),
-        ),
+        border: Border.all(color: const Color(0xFFFECACA)),
       ),
       child: Column(
         children: [
@@ -361,10 +358,7 @@ class _ParkingHistoryScreenState extends State<ParkingHistoryScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            AppTheme.primaryBlue,
-            Color(0xFF056BF1),
-          ],
+          colors: [AppTheme.primaryBlue, Color(0xFF056BF1)],
         ),
         borderRadius: BorderRadius.circular(26),
         boxShadow: [
@@ -377,18 +371,12 @@ class _ParkingHistoryScreenState extends State<ParkingHistoryScreen> {
       ),
       child: Row(
         children: [
-          _SummaryItem(
-            value: _totalEvents.toString(),
-            label: 'Total Logs',
-          ),
+          _SummaryItem(value: _totalEvents.toString(), label: 'Total Logs'),
           _SummaryItem(
             value: _totalReservations.toString(),
             label: 'Reservations',
           ),
-          _SummaryItem(
-            value: _totalAnprLogs.toString(),
-            label: 'ANPR Logs',
-          ),
+          _SummaryItem(value: _totalAnprLogs.toString(), label: 'ANPR Logs'),
           _SummaryItem(
             value: 'RM${_totalFeesPaid.toStringAsFixed(0)}',
             label: 'Fees',
@@ -411,9 +399,7 @@ class _ParkingHistoryScreenState extends State<ParkingHistoryScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: const Color(0xFFE8EEF7),
-            ),
+            border: Border.all(color: const Color(0xFFE8EEF7)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.035),
@@ -588,17 +574,11 @@ class _ParkingHistoryScreenState extends State<ParkingHistoryScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: const Color(0xFFE8EEF7),
-          ),
+          border: Border.all(color: const Color(0xFFE8EEF7)),
         ),
         child: const Column(
           children: [
-            Icon(
-              Icons.history_rounded,
-              color: Color(0xFF94A3B8),
-              size: 42,
-            ),
+            Icon(Icons.history_rounded, color: Color(0xFF94A3B8), size: 42),
             SizedBox(height: 10),
             Text(
               'No history records found',
@@ -660,10 +640,7 @@ enum _HistoryFilter {
 // HISTORY ITEM TYPE
 // =====================================================
 
-enum _HistoryItemType {
-  reservation,
-  anpr,
-}
+enum _HistoryItemType { reservation, anpr }
 
 // =====================================================
 // HISTORY ITEM
@@ -743,9 +720,7 @@ class _BackButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFE8EEF7),
-          ),
+          border: Border.all(color: const Color(0xFFE8EEF7)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.055),
@@ -772,10 +747,7 @@ class _SummaryItem extends StatelessWidget {
   final String value;
   final String label;
 
-  const _SummaryItem({
-    required this.value,
-    required this.label,
-  });
+  const _SummaryItem({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -861,9 +833,7 @@ class _HistoryFilterChip extends StatelessWidget {
 class _ReservationHistoryTile extends StatelessWidget {
   final ReservationRecord reservation;
 
-  const _ReservationHistoryTile({
-    required this.reservation,
-  });
+  const _ReservationHistoryTile({required this.reservation});
 
   Color get _statusColor {
     switch (reservation.status) {
@@ -901,10 +871,7 @@ class _ReservationHistoryTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              _HistoryIconBox(
-                icon: _statusIcon,
-                color: _statusColor,
-              ),
+              _HistoryIconBox(icon: _statusIcon, color: _statusColor),
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
@@ -998,9 +965,7 @@ class _ReservationHistoryTile extends StatelessWidget {
 class _AnprHistoryTile extends StatelessWidget {
   final AnprLogRecord log;
 
-  const _AnprHistoryTile({
-    required this.log,
-  });
+  const _AnprHistoryTile({required this.log});
 
   Color get _color {
     if (!log.isAllowed) {
@@ -1028,8 +993,9 @@ class _AnprHistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double confidence =
-        log.confidenceScore > 0 ? log.confidenceScore : log.confidence;
+    final double confidence = log.confidenceScore > 0
+        ? log.confidenceScore
+        : log.confidence;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1039,10 +1005,7 @@ class _AnprHistoryTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              _HistoryIconBox(
-                icon: _icon,
-                color: _color,
-              ),
+              _HistoryIconBox(icon: _icon, color: _color),
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
@@ -1065,10 +1028,7 @@ class _AnprHistoryTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _StatusBadge(
-                label: log.accessDecisionLabel,
-                color: _color,
-              ),
+              _StatusBadge(label: log.accessDecisionLabel, color: _color),
             ],
           ),
           const SizedBox(height: 14),
@@ -1109,10 +1069,7 @@ class _HistoryIconBox extends StatelessWidget {
   final IconData icon;
   final Color color;
 
-  const _HistoryIconBox({
-    required this.icon,
-    required this.color,
-  });
+  const _HistoryIconBox({required this.icon, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1123,11 +1080,7 @@ class _HistoryIconBox extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Icon(
-        icon,
-        color: color,
-        size: 24,
-      ),
+      child: Icon(icon, color: color, size: 24),
     );
   }
 }
@@ -1147,11 +1100,7 @@ class _HistoryInfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: AppTheme.primaryBlue,
-          size: 18,
-        ),
+        Icon(icon, color: AppTheme.primaryBlue, size: 18),
         const SizedBox(width: 8),
         Text(
           '$label: ',
@@ -1183,10 +1132,7 @@ class _StatusBadge extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _StatusBadge({
-    required this.label,
-    required this.color,
-  });
+  const _StatusBadge({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1221,8 +1167,9 @@ class _FeeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color =
-        highlight ? const Color(0xFF22C55E) : AppTheme.primaryBlue;
+    final Color color = highlight
+        ? const Color(0xFF22C55E)
+        : AppTheme.primaryBlue;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
@@ -1267,9 +1214,7 @@ BoxDecoration _historyCardDecoration() {
   return BoxDecoration(
     color: Colors.white,
     borderRadius: BorderRadius.circular(22),
-    border: Border.all(
-      color: const Color(0xFFE8EEF7),
-    ),
+    border: Border.all(color: const Color(0xFFE8EEF7)),
     boxShadow: [
       BoxShadow(
         color: Colors.black.withValues(alpha: 0.035),

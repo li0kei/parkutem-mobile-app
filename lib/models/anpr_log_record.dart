@@ -2,29 +2,19 @@
 // ANPR LOG TYPE
 // =====================================================
 
-enum AnprDetectionType {
-  entry,
-  exit,
-}
+enum AnprDetectionType { entry, exit }
 
 // =====================================================
 // ANPR ACCESS DECISION
 // =====================================================
 
-enum AnprAccessDecision {
-  allowed,
-  denied,
-}
+enum AnprAccessDecision { allowed, denied }
 
 // =====================================================
 // ANPR ACCESS STATUS
 // =====================================================
 
-enum AnprAccessStatus {
-  approved,
-  flagged,
-  unknown,
-}
+enum AnprAccessStatus { approved, flagged, unknown }
 
 // =====================================================
 // ANPR LOG RECORD MODEL
@@ -115,7 +105,8 @@ class AnprLogRecord {
       processingMode: json['processing_mode']?.toString() ?? 'cloud_anpr',
       detectedAt: _toDateTime(json['detected_at']) ?? DateTime.now(),
       createdAt: _toDateTime(json['created_at']),
-      plateNumber: json['plate_number']?.toString() ??
+      plateNumber:
+          json['plate_number']?.toString() ??
           json['detected_plate_number']?.toString() ??
           '-',
       ownerName: json['owner_name']?.toString() ?? '-',
@@ -252,6 +243,6 @@ class AnprLogRecord {
     if (parsed == null) return null;
 
     // ParkUTeM display time = Malaysia campus time.
-    return parsed.toUtc().add(const Duration(hours: 8));
+    return parsed.toLocal();
   }
 }

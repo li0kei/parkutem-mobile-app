@@ -2,12 +2,7 @@
 // RESERVATION RECORD STATUS
 // =====================================================
 
-enum ReservationRecordStatus {
-  upcoming,
-  active,
-  completed,
-  cancelled,
-}
+enum ReservationRecordStatus { upcoming, active, completed, cancelled }
 
 // =====================================================
 // RESERVATION RECORD STATUS EXTENSION
@@ -104,15 +99,13 @@ class ReservationRecord {
   factory ReservationRecord.fromJson(Map<String, dynamic> json) {
     return ReservationRecord(
       id: json['id']?.toString() ?? '',
-      reservationReference:
-          json['reservation_reference']?.toString() ?? '-',
+      reservationReference: json['reservation_reference']?.toString() ?? '-',
       bayId: json['bay_id']?.toString(),
       universityId: json['university_id']?.toString() ?? '-',
       userName: json['user_name']?.toString() ?? '-',
       userType: json['user_type']?.toString() ?? '-',
       plateNumber: json['plate_number']?.toString() ?? '-',
-      normalizedPlateNumber:
-          json['normalized_plate_number']?.toString() ?? '-',
+      normalizedPlateNumber: json['normalized_plate_number']?.toString() ?? '-',
       reservationStartAt:
           _toDateTime(json['reservation_start_at']) ?? DateTime.now(),
       reservationEndAt:
@@ -195,20 +188,20 @@ class ReservationRecord {
 
     return double.tryParse(value.toString()) ?? 0;
   }
-  
-// =====================================================
-// DATE TIME HELPER
-// =====================================================
 
-static DateTime? _toDateTime(dynamic value) {
-  if (value == null) return null;
+  // =====================================================
+  // DATE TIME HELPER
+  // =====================================================
 
-  final DateTime? parsed = DateTime.tryParse(value.toString());
+  static DateTime? _toDateTime(dynamic value) {
+    if (value == null) return null;
 
-  if (parsed == null) return null;
+    final DateTime? parsed = DateTime.tryParse(value.toString());
 
-  // Supabase timestamptz is usually returned in UTC.
-  // ParkUTeM uses Malaysia campus time, so display as UTC+8.
-  return parsed.toUtc().add(const Duration(hours: 8));
-}
+    if (parsed == null) return null;
+
+    // Supabase timestamptz is usually returned in UTC.
+    // ParkUTeM uses Malaysia campus time, so display as UTC+8.
+    return parsed.toLocal();
+  }
 }

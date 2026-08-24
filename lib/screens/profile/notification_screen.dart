@@ -54,8 +54,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
 
     try {
-      final List<UserNotification> notifications =
-          await _notificationService.getCurrentUserNotifications();
+      final List<UserNotification> notifications = await _notificationService
+          .getCurrentUserNotifications();
 
       if (!mounted) return;
 
@@ -135,9 +135,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
-        _BackButton(
-          onTap: () => Navigator.of(context).pop(),
-        ),
+        _BackButton(onTap: () => Navigator.of(context).pop()),
         const SizedBox(width: 14),
         const Expanded(
           child: Column(
@@ -206,15 +204,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
       ),
       child: const Column(
         children: [
-          CircularProgressIndicator(
-            color: AppTheme.primaryBlue,
-          ),
+          CircularProgressIndicator(color: AppTheme.primaryBlue),
           SizedBox(height: 16),
           Text(
             'Loading notifications...',
@@ -240,9 +234,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFFECACA),
-        ),
+        border: Border.all(color: const Color(0xFFFECACA)),
       ),
       child: Column(
         children: [
@@ -300,10 +292,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            AppTheme.primaryBlue,
-            Color(0xFF056BF1),
-          ],
+          colors: [AppTheme.primaryBlue, Color(0xFF056BF1)],
         ),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
@@ -415,9 +404,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: const Color(0xFFE8EEF7),
-          ),
+          border: Border.all(color: const Color(0xFFE8EEF7)),
         ),
         child: const Column(
           children: [
@@ -462,106 +449,93 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-// =====================================================
-// HANDLE NOTIFICATION TAP
-// =====================================================
+  // =====================================================
+  // HANDLE NOTIFICATION TAP
+  // =====================================================
 
-Future<void> _handleNotificationTap(UserNotification item) async {
-  if (!item.isRead) {
+  Future<void> _handleNotificationTap(UserNotification item) async {
+    if (!item.isRead) {
+      try {
+        await _notificationService.markOneAsRead(item.id);
+
+        if (!mounted) return;
+
+        setState(() {
+          _notifications = _notifications.map((notification) {
+            if (notification.id != item.id) {
+              return notification;
+            }
+
+            return notification.copyWith(isRead: true, readAt: DateTime.now());
+          }).toList();
+        });
+      } catch (_) {
+        if (!mounted) return;
+
+        _showMessage('Unable to update notification status.', isError: true);
+      }
+    }
+
+    if (!mounted) return;
+
+    final String? route = item.relatedRoute;
+
+    if (route == null || route.trim().isEmpty) return;
+
+    Navigator.of(context).pushNamed(route);
+  }
+
+  // =====================================================
+  // MARK ALL AS READ
+  // =====================================================
+
+  Future<void> _markAllAsRead() async {
+    setState(() {
+      _isMarkingRead = true;
+    });
+
     try {
-      await _notificationService.markOneAsRead(item.id);
+      final int updatedCount = await _notificationService.markAllAsRead();
 
       if (!mounted) return;
 
-      setState(() {
-        _notifications = _notifications.map((notification) {
-          if (notification.id != item.id) {
-            return notification;
-          }
+      await _loadNotifications();
 
-          return notification.copyWith(
-            isRead: true,
-            readAt: DateTime.now(),
-          );
-        }).toList();
-      });
+      if (!mounted) return;
+
+      _showMessage(
+        updatedCount == 0
+            ? 'No unread notifications.'
+            : '$updatedCount notification(s) marked as read.',
+      );
     } catch (_) {
-      if (!mounted) return;
-
-      _showMessage(
-        'Unable to update notification status.',
-        isError: true,
-      );
+      if (mounted) {
+        _showMessage('Unable to mark notifications as read.', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMarkingRead = false;
+        });
+      }
     }
   }
-
-  if (!mounted) return;
-
-  final String? route = item.relatedRoute;
-
-  if (route == null || route.trim().isEmpty) return;
-
-  Navigator.of(context).pushNamed(route);
-}
-
-// =====================================================
-// MARK ALL AS READ
-// =====================================================
-
-Future<void> _markAllAsRead() async {
-  setState(() {
-    _isMarkingRead = true;
-  });
-
-  try {
-    final int updatedCount = await _notificationService.markAllAsRead();
-
-    if (!mounted) return;
-
-    await _loadNotifications();
-
-    if (!mounted) return;
-
-    _showMessage(
-      updatedCount == 0
-          ? 'No unread notifications.'
-          : '$updatedCount notification(s) marked as read.',
-    );
-  } catch (_) {
-    if (mounted) {
-      _showMessage(
-        'Unable to mark notifications as read.',
-        isError: true,
-      );
-    }
-  } finally {
-    if (mounted) {
-      setState(() {
-        _isMarkingRead = false;
-      });
-    }
-  }
-}
 
   // =====================================================
   // SHOW MESSAGE
   // =====================================================
 
-  void _showMessage(
-    String message, {
-    bool isError = false,
-  }) {
+  void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).clearSnackBars();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        backgroundColor:
-            isError ? const Color(0xFFEF4444) : AppTheme.primaryBlue,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        backgroundColor: isError
+            ? const Color(0xFFEF4444)
+            : AppTheme.primaryBlue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
@@ -574,9 +548,7 @@ Future<void> _markAllAsRead() async {
 class _BackButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _BackButton({
-    required this.onTap,
-  });
+  const _BackButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -591,9 +563,7 @@ class _BackButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFFE8EEF7),
-            ),
+            border: Border.all(color: const Color(0xFFE8EEF7)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.055),
@@ -664,10 +634,7 @@ class _NotificationTile extends StatelessWidget {
   final UserNotification item;
   final VoidCallback onTap;
 
-  const _NotificationTile({
-    required this.item,
-    required this.onTap,
-  });
+  const _NotificationTile({required this.item, required this.onTap});
 
   Color get color {
     switch (item.type) {
@@ -741,11 +708,7 @@ class _NotificationTile extends StatelessWidget {
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 24,
-                ),
+                child: Icon(icon, color: color, size: 24),
               ),
               const SizedBox(width: 13),
               Expanded(

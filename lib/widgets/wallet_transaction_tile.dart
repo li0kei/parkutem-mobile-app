@@ -10,10 +10,7 @@ import '../models/wallet_transaction.dart';
 class WalletTransactionTile extends StatelessWidget {
   final WalletTransaction transaction;
 
-  const WalletTransactionTile({
-    super.key,
-    required this.transaction,
-  });
+  const WalletTransactionTile({super.key, required this.transaction});
 
   // =====================================================
   // TRANSACTION COLOR
@@ -78,9 +75,7 @@ class WalletTransactionTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.045),
@@ -98,11 +93,7 @@ class WalletTransactionTile extends StatelessWidget {
               color: transactionColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(
-              transactionIcon,
-              color: transactionColor,
-              size: 24,
-            ),
+            child: Icon(transactionIcon, color: transactionColor, size: 24),
           ),
           const SizedBox(width: 13),
           Expanded(

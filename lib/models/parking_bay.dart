@@ -2,12 +2,7 @@
 // PARKING BAY STATUS
 // =====================================================
 
-enum ParkingBayStatus {
-  available,
-  occupied,
-  reserved,
-  maintenance,
-}
+enum ParkingBayStatus { available, occupied, reserved, maintenance }
 
 // =====================================================
 // PARKING BAY STATUS EXTENSION
@@ -70,7 +65,7 @@ class ParkingBay {
     required this.status,
     required this.allowedFor,
     this.isPremium = false,
-    this.sensorStatus = 'placeholder',
+    this.sensorStatus = 'unknown',
     this.currentPlateNumber,
     this.currentUserType,
     this.lastUpdatedAt,
@@ -79,38 +74,33 @@ class ParkingBay {
     this.locationName,
   });
 
-  // =====================================================
-  // FROM SUPABASE JSON
-  // =====================================================
-
   factory ParkingBay.fromJson(Map<String, dynamic> json) {
     final Map<String, dynamic>? zoneData = json['parking_zones'] is Map
         ? Map<String, dynamic>.from(json['parking_zones'] as Map)
         : null;
 
     final String zoneCode =
-        zoneData?['zone_code']?.toString() ?? json['zone_code']?.toString() ?? '-';
+        zoneData?['zone_code']?.toString() ??
+        json['zone_code']?.toString() ??
+        '-';
 
     final String zoneName =
-        zoneData?['zone_name']?.toString() ?? json['zone_name']?.toString() ?? 'Zone $zoneCode';
+        zoneData?['zone_name']?.toString() ??
+        json['zone_name']?.toString() ??
+        'Zone $zoneCode';
 
     final String locationName =
         zoneData?['location_name']?.toString() ??
-            json['location_name']?.toString() ??
-            '-';
+        json['location_name']?.toString() ??
+        '-';
 
     return ParkingBay(
       id: json['id']?.toString() ?? '',
-      zone: locationName == '-'
-          ? zoneName
-          : '$zoneName • $locationName',
+      zone: locationName == '-' ? zoneName : '$zoneName • $locationName',
       bayNumber: json['bay_code']?.toString() ?? '-',
-      status: ParkingBayStatusExtension.fromString(
-        json['status']?.toString(),
-      ),
+      status: ParkingBayStatusExtension.fromString(json['status']?.toString()),
       allowedFor: json['current_user_type']?.toString() ?? 'All Users',
-      isPremium: false,
-      sensorStatus: json['sensor_status']?.toString() ?? 'placeholder',
+      sensorStatus: json['sensor_status']?.toString() ?? 'unknown',
       currentPlateNumber: json['current_plate_number']?.toString(),
       currentUserType: json['current_user_type']?.toString(),
       lastUpdatedAt: _toDateTime(json['last_updated_at']),
@@ -120,13 +110,13 @@ class ParkingBay {
     );
   }
 
-  // =====================================================
-  // HELPERS
-  // =====================================================
+  bool get hasLiveSensor {
+    final value = sensorStatus.trim().toLowerCase();
+    return value.isNotEmpty && value != 'unknown' && value != 'placeholder';
+  }
 
   static DateTime? _toDateTime(dynamic value) {
     if (value == null) return null;
-
-    return DateTime.tryParse(value.toString());
+    return DateTime.tryParse(value.toString())?.toLocal();
   }
 }

@@ -1,9 +1,6 @@
-// =====================================================
-// IMPORTS
-// =====================================================
-
 import 'package:flutter/material.dart';
 
+import '../../core/services/notification_service.dart';
 import '../../core/services/parking_service.dart';
 import '../../core/services/reservation_history_service.dart';
 import '../../core/services/university_user_service.dart';
@@ -13,15 +10,7 @@ import '../../models/parking_bay.dart';
 import '../../models/reservation_record.dart';
 import '../../models/university_user.dart';
 import '../../models/vehicle_record.dart';
-import '../../widgets/activity_tile.dart';
 import '../../widgets/app_bottom_navigation.dart';
-import '../../widgets/dashboard_stat_card.dart';
-import '../../widgets/home_action_card.dart';
-import '../../core/services/notification_service.dart';
-
-// =====================================================
-// HOME SCREEN
-// =====================================================
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,205 +19,144 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-// =====================================================
-// HOME SCREEN STATE
-// =====================================================
-
 class _HomeScreenState extends State<HomeScreen> {
-  final UniversityUserService _universityUserService = UniversityUserService();
+  final UniversityUserService _userService = UniversityUserService();
   final VehicleService _vehicleService = VehicleService();
-  final ReservationHistoryService _reservationHistoryService =
+  final ReservationHistoryService _reservationService =
       ReservationHistoryService();
   final ParkingService _parkingService = ParkingService();
   final NotificationService _notificationService = NotificationService();
 
   UniversityUser? _profile;
   VehicleRecord? _vehicle;
-  List<ReservationRecord> _upcomingReservations = [];
-  List<ParkingBay> _parkingBays = [];
+  List<ReservationRecord> _reservations = [];
+  List<ParkingBay> _bays = [];
+  int _unreadCount = 0;
 
-  int _unreadNotificationCount = 0;
-  
   bool _isLoading = true;
-  String? _errorMessage;
-
-  // =====================================================
-  // INIT STATE
-  // =====================================================
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadHomeDashboard();
+    _load();
   }
 
-  
-  // =====================================================
-  // LOAD HOME DASHBOARD
-  // =====================================================
-
-  Future<void> _loadHomeDashboard() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  Future<void> _load() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
-      final UniversityUser? profile =
-          await _universityUserService.getCurrentUserProfile();
-
-      final VehicleRecord? vehicle = await _vehicleService.getPrimaryVehicle();
-
-      final List<ReservationRecord> reservations =
-          await _reservationHistoryService.getUpcomingReservations();
-
-      final List<ParkingBay> bays = await _parkingService.getParkingBays();
-
-      final int unreadNotificationCount =
-        await _notificationService.getUnreadCount();
+      final results = await Future.wait<dynamic>([
+        _userService.getCurrentUserProfile(),
+        _vehicleService.getPrimaryVehicle(),
+        _reservationService.getUpcomingReservations(),
+        _parkingService.getParkingBays(),
+        _notificationService.getUnreadCount(),
+      ]);
 
       if (!mounted) return;
 
       setState(() {
-        _profile = profile;
-        _vehicle = vehicle;
-        _upcomingReservations = reservations;
-        _unreadNotificationCount = unreadNotificationCount;
-        _parkingBays = bays;
+        _profile = results[0] as UniversityUser?;
+        _vehicle = results[1] as VehicleRecord?;
+        _reservations = results[2] as List<ReservationRecord>;
+        _bays = results[3] as List<ParkingBay>;
+        _unreadCount = results[4] as int;
         _isLoading = false;
       });
     } catch (error) {
       if (!mounted) return;
-
       setState(() {
-        _errorMessage = error.toString();
+        _error = error.toString();
         _isLoading = false;
       });
     }
   }
 
-  // =====================================================
-  // PARKING COUNTS
-  // =====================================================
+  int get _available =>
+      _bays.where((bay) => bay.status == ParkingBayStatus.available).length;
 
-  int get _totalBays => _parkingBays.length;
+  int get _occupied =>
+      _bays.where((bay) => bay.status == ParkingBayStatus.occupied).length;
 
-  int get _availableBays {
-    return _parkingBays
-        .where((bay) => bay.status == ParkingBayStatus.available)
-        .length;
+  ReservationRecord? get _nextReservation {
+    if (_reservations.isEmpty) return null;
+
+    final values = List<ReservationRecord>.from(_reservations)
+      ..sort((a, b) => a.reservationStartAt.compareTo(b.reservationStartAt));
+
+    return values.first;
   }
 
-  int get _occupiedBays {
-    return _parkingBays
-        .where((bay) => bay.status == ParkingBayStatus.occupied)
-        .length;
-  }
-
-  int get _reservedBays {
-    return _parkingBays
-        .where((bay) => bay.status == ParkingBayStatus.reserved)
-        .length;
-  }
-
-  ReservationRecord? get _nearestReservation {
-    if (_upcomingReservations.isEmpty) return null;
-
-    final List<ReservationRecord> sorted = List.from(_upcomingReservations)
-      ..sort(
-        (a, b) => a.reservationStartAt.compareTo(b.reservationStartAt),
-      );
-
-    return sorted.first;
+  String get _firstName {
+    final value = (_profile?.fullName ?? 'UTeM User').trim();
+    if (value.isEmpty) return 'UTeM User';
+    return value.split(RegExp(r'\s+')).first;
   }
 
   String get _greeting {
-    final int hour = DateTime.now().hour;
-
-    if (hour < 12) return 'Good Morning,';
-    if (hour < 18) return 'Good Afternoon,';
-
-    return 'Good Evening,';
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
   }
 
-  String get _userName => _profile?.fullName ?? 'UTeM User';
-
-  String get _userType {
-    final String role = _profile?.role ?? 'student';
-
-    if (role.toLowerCase() == 'staff') {
-      return 'UTeM Staff';
-    }
-
-    return 'UTeM Student';
+  void _navigateFromBottomBar(int index) {
+    final routes = ['/home', '/parking', '/reserve', '/wallet', '/profile'];
+    if (index == 0) return;
+    Navigator.of(context).pushReplacementNamed(routes[index]);
   }
-
-  double get _walletBalance => _profile?.walletBalance ?? 0;
-
-  // =====================================================
-  // BUILD
-  // =====================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FB),
+      backgroundColor: AppTheme.canvas,
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
               child: RefreshIndicator(
-                onRefresh: _loadHomeDashboard,
-                color: AppTheme.primaryBlue,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(context),
-                      const SizedBox(height: 22),
-                      if (_isLoading)
-                        _buildLoadingState()
-                      else if (_errorMessage != null)
-                        _buildErrorState()
-                      else ...[
-                        _buildVehicleCard(context),
-                        const SizedBox(height: 18),
-                        _buildMainActionCard(context),
-                        const SizedBox(height: 26),
-                        _buildParkingOverviewHeader(context),
-                        const SizedBox(height: 14),
-                        _buildParkingOverviewCards(),
-                        const SizedBox(height: 24),
-                        _buildActiveReservationCard(context),
-                        const SizedBox(height: 24),
-                        _buildWalletPreviewCard(context),
-                        const SizedBox(height: 24),
-                        _buildQuickActions(context),
-                        const SizedBox(height: 24),
-                        _buildRecentActivity(context),
-                      ],
+                onRefresh: _load,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 22),
+                    if (_isLoading)
+                      const _LoadingPanel()
+                    else if (_error != null)
+                      _ErrorPanel(onRetry: _load)
+                    else ...[
+                      _buildParkingNow(),
+                      const SizedBox(height: 16),
+                      _buildQuickActions(),
+                      const SizedBox(height: 24),
+                      _buildVehicle(),
+                      const SizedBox(height: 16),
+                      _buildReservation(),
+                      const SizedBox(height: 16),
+                      _buildWallet(),
                     ],
-                  ),
+                  ],
                 ),
               ),
             ),
-            _buildBottomNavigation(context),
+            AppBottomNavigation(currentIndex: 0, onTap: _navigateFromBottomBar),
           ],
         ),
       ),
     );
   }
 
-  // =====================================================
-  // HEADER
-  // =====================================================
-
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader() {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Column(
@@ -237,83 +165,131 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 _greeting,
                 style: const TextStyle(
-                  color: Color(0xFF475569),
-                  fontSize: 16,
+                  color: AppTheme.muted,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _userName,
-                style: const TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.6,
                 ),
               ),
               const SizedBox(height: 3),
               Text(
-                _userType,
+                _firstName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
+                  color: AppTheme.ink,
+                  fontSize: 27,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
                 ),
               ),
             ],
           ),
         ),
-      Row(
+        IconButton.filledTonal(
+          onPressed: _load,
+          tooltip: 'Refresh',
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+        const SizedBox(width: 6),
+        Stack(
+          clipBehavior: Clip.none,
           children: [
-            _HeaderIconButton(
-              icon: Icons.refresh_rounded,
-              onTap: _loadHomeDashboard,
-            ),
-            const SizedBox(width: 10),
-            _NotificationBellButton(
-              unreadCount: _unreadNotificationCount,
-              onTap: () async {
+            IconButton.filledTonal(
+              onPressed: () async {
                 await Navigator.of(context).pushNamed('/notifications');
-
-                if (!mounted) return;
-
-                _loadHomeDashboard();
+                if (mounted) {
+                  await _load();
+                }
               },
+              tooltip: 'Notifications',
+              icon: const Icon(Icons.notifications_outlined),
             ),
+            if (_unreadCount > 0)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 18),
+                  height: 18,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD92D20),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: AppTheme.canvas, width: 2),
+                  ),
+                  child: Text(
+                    _unreadCount > 9 ? '9+' : '$_unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ],
     );
   }
 
-  // =====================================================
-  // LOADING STATE
-  // =====================================================
+  Widget _buildParkingNow() {
+    final total = _bays.length;
 
-  Widget _buildLoadingState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 58),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
-      ),
-      child: const Column(
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircularProgressIndicator(
-            color: AppTheme.primaryBlue,
+          const Row(
+            children: [
+              Icon(Icons.local_parking_rounded, color: AppTheme.primaryBlue),
+              SizedBox(width: 9),
+              Text(
+                'Parking now',
+                style: TextStyle(
+                  color: AppTheme.ink,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 16),
-          Text(
-            'Loading dashboard...',
-            style: TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _Metric(
+                  value: '$_available',
+                  label: 'Available',
+                  valueColor: const Color(0xFF067647),
+                ),
+              ),
+              const _VerticalDivider(),
+              Expanded(
+                child: _Metric(
+                  value: '$_occupied',
+                  label: 'Occupied',
+                  valueColor: const Color(0xFFB42318),
+                ),
+              ),
+              const _VerticalDivider(),
+              Expanded(
+                child: _Metric(
+                  value: '$total',
+                  label: 'Total bays',
+                  valueColor: AppTheme.ink,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).pushNamed('/parking'),
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Open live parking map'),
             ),
           ),
         ],
@@ -321,573 +297,168 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // =====================================================
-  // ERROR STATE
-  // =====================================================
-
-  Widget _buildErrorState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFFECACA),
+  Widget _buildQuickActions() {
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.event_available_outlined,
+            label: 'Reserve',
+            onTap: () => Navigator.of(context).pushNamed('/reserve'),
+          ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Wallet',
+            onTap: () => Navigator.of(context).pushNamed('/wallet'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.history_rounded,
+            label: 'History',
+            onTap: () => Navigator.of(context).pushNamed('/parking-history'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVehicle() {
+    final vehicle = _vehicle;
+
+    return _Panel(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: Color(0xFFEF4444),
-            size: 40,
+          _SectionHeader(
+            title: 'Vehicle',
+            action: 'Manage',
+            onTap: () => Navigator.of(context).pushNamed('/profile'),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Unable to load dashboard',
-            style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
+          const SizedBox(height: 14),
+          if (vehicle == null)
+            const Text(
+              'No vehicle is linked to this account yet.',
+              style: TextStyle(color: AppTheme.muted, height: 1.4),
+            )
+          else
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.directions_car_outlined,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        vehicle.plateNumber,
+                        style: const TextStyle(
+                          color: AppTheme.ink,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        vehicle.vehicleDescription,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppTheme.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                _StatusChip(
+                  label: vehicle.isAnprEnabled ? 'ANPR ready' : 'ANPR off',
+                  positive: vehicle.isAnprEnabled,
+                ),
+              ],
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReservation() {
+    final reservation = _nextReservation;
+
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(
+            title: 'Next reservation',
+            action: reservation == null ? 'Reserve' : 'History',
+            onTap: () => Navigator.of(
+              context,
+            ).pushNamed(reservation == null ? '/reserve' : '/parking-history'),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _errorMessage ?? 'Something went wrong.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 12.5,
-              height: 1.45,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _loadHomeDashboard,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Retry'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+          const SizedBox(height: 14),
+          if (reservation == null)
+            const Text(
+              'No upcoming reservation.',
+              style: TextStyle(color: AppTheme.muted),
+            )
+          else ...[
+            Text(
+              '${reservation.bayLabel} • ${reservation.locationLabel}',
+              style: const TextStyle(
+                color: AppTheme.ink,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
               ),
             ),
-          ),
+            const SizedBox(height: 5),
+            Text(
+              _formatDateTime(reservation.reservationStartAt),
+              style: const TextStyle(color: AppTheme.muted),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  // =====================================================
-  // VEHICLE CARD
-  // =====================================================
-
-  Widget _buildVehicleCard(BuildContext context) {
-    if (_vehicle == null) {
-      return _buildNoVehicleCard(context);
-    }
-
-    final bool isActive = _vehicle!.stickerStatus == 'active';
-    final bool isAnprEnabled = _vehicle!.isAnprEnabled;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 25,
-            offset: const Offset(0, 12),
-          ),
-        ],
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
-      ),
+  Widget _buildWallet() {
+    return _Panel(
       child: Row(
         children: [
-          Container(
-            width: 4,
-            height: 95,
-            decoration: BoxDecoration(
-              color: isActive ? AppTheme.primaryBlue : const Color(0xFFF59E0B),
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-          const SizedBox(width: 17),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'My Sticker & Vehicle',
+                  'Wallet balance',
                   style: TextStyle(
-                    color: AppTheme.primaryBlue,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _vehicle!.plateNumber,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _vehicle!.vehicleDescription,
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildMiniBadge(
-                      label: _formatStatusLabel(_vehicle!.stickerStatus),
-                      color: isActive
-                          ? const Color(0xFF22C55E)
-                          : const Color(0xFFF59E0B),
-                    ),
-                    _buildMiniBadge(
-                      label: isAnprEnabled ? 'ANPR Enabled' : 'ANPR Disabled',
-                      color: isAnprEnabled
-                          ? AppTheme.primaryCyan
-                          : const Color(0xFF94A3B8),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: const Icon(
-              Icons.directions_car_filled_rounded,
-              color: AppTheme.primaryBlue,
-              size: 39,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoVehicleCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.directions_car_filled_rounded,
-              color: AppTheme.primaryBlue,
-              size: 30,
-            ),
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'No vehicle registered',
-                  style: TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Register your vehicle to enable sticker and ANPR access.',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
+                    color: AppTheme.muted,
                     fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    height: 1.35,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pushNamed('/profile'),
-            child: const Text(
-              'Open',
-              style: TextStyle(
-                color: AppTheme.primaryBlue,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniBadge({
-    required String label,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-
-  // =====================================================
-  // MAIN ACTION CARD
-  // =====================================================
-
-  Widget _buildMainActionCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            AppTheme.primaryBlue,
-            Color(0xFF056BF1),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryBlue.withValues(alpha: 0.28),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          HomeActionCard(
-            icon: Icons.local_parking_rounded,
-            title: 'Find Parking',
-            subtitle: 'View available bays',
-            onTap: () => Navigator.of(context).pushNamed('/parking'),
-          ),
-          HomeActionCard(
-            icon: Icons.event_available_rounded,
-            title: 'Reserve Bay',
-            subtitle: 'Book your parking',
-            onTap: () => Navigator.of(context).pushNamed('/reserve'),
-          ),
-          HomeActionCard(
-            icon: Icons.verified_user_rounded,
-            title: 'My Sticker',
-            subtitle: 'Vehicle & ANPR status',
-            onTap: () => Navigator.of(context).pushNamed('/profile'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // PARKING OVERVIEW
-  // =====================================================
-
-  Widget _buildParkingOverviewHeader(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(
-          child: Text(
-            'Parking Overview',
-            style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pushNamed('/parking'),
-          child: const Text(
-            'View All',
-            style: TextStyle(
-              color: AppTheme.primaryBlue,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildParkingOverviewCards() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            DashboardStatCard(
-              icon: Icons.local_parking_rounded,
-              title: 'Total Bays',
-              value: _totalBays.toString(),
-              subtitle: 'Campus bays',
-              color: AppTheme.primaryBlue,
-            ),
-            const SizedBox(width: 14),
-            DashboardStatCard(
-              icon: Icons.directions_car_rounded,
-              title: 'Available',
-              value: _availableBays.toString(),
-              subtitle: 'Live update',
-              color: const Color(0xFF22C55E),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            DashboardStatCard(
-              icon: Icons.car_crash_rounded,
-              title: 'Occupied',
-              value: _occupiedBays.toString(),
-              subtitle: 'Currently used',
-              color: const Color(0xFFEF4444),
-            ),
-            const SizedBox(width: 14),
-            DashboardStatCard(
-              icon: Icons.event_busy_rounded,
-              title: 'Reserved',
-              value: _reservedBays.toString(),
-              subtitle: 'Booked bays',
-              color: const Color(0xFFF59E0B),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // =====================================================
-  // ACTIVE RESERVATION CARD
-  // =====================================================
-
-  Widget _buildActiveReservationCard(BuildContext context) {
-    final ReservationRecord? reservation = _nearestReservation;
-
-    if (reservation == null) {
-      return _SectionCard(
-        title: 'Upcoming Reservation',
-        actionText: 'Reserve',
-        onActionTap: () => Navigator.of(context).pushNamed('/reserve'),
-        child: Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(
-                Icons.event_available_rounded,
-                color: AppTheme.primaryBlue,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'No upcoming reservation',
-                    style: TextStyle(
-                      color: Color(0xFF0F172A),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Reserve a parking bay before arriving.',
-                    style: TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return _SectionCard(
-      title: 'Upcoming Reservation',
-      actionText: 'Details',
-      onActionTap: () => Navigator.of(context).pushNamed('/parking-history'),
-      child: Row(
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.event_available_rounded,
-              color: AppTheme.primaryBlue,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+                const SizedBox(height: 5),
                 Text(
-                  '${reservation.bayLabel} • ${reservation.locationLabel}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  'RM${(_profile?.walletBalance ?? 0).toStringAsFixed(2)}',
                   style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 15,
+                    color: AppTheme.ink,
+                    fontSize: 24,
                     fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatDateTimeRange(
-                    reservation.reservationStartAt,
-                    reservation.reservationEndAt,
-                  ),
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _buildMiniBadge(
-            label: reservation.status.label,
-            color: const Color(0xFFF59E0B),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // WALLET PREVIEW
-  // =====================================================
-
-  Widget _buildWalletPreviewCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.20),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 55,
-            height: 55,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryCyan.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.account_balance_wallet_rounded,
-              color: AppTheme.primaryCyan,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Wallet Balance',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.70),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'RM${_walletBalance.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Used for reservation and after-7PM parking fee',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.54),
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -895,379 +466,95 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pushNamed('/wallet'),
-            child: const Text(
-              'Top Up',
-              style: TextStyle(
-                color: AppTheme.primaryCyan,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+            child: const Text('Open wallet'),
           ),
         ],
       ),
     );
   }
 
-  // =====================================================
-  // QUICK ACTIONS
-  // =====================================================
+  String _formatDateTime(DateTime value) {
+    final local = value.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour >= 12 ? 'PM' : 'AM';
+    return '${local.day}/${local.month}/${local.year} • $hour:$minute $period';
+  }
+}
 
-  Widget _buildQuickActions(BuildContext context) {
+class _Panel extends StatelessWidget {
+  final Widget child;
+  const _Panel({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _Metric extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color valueColor;
+
+  const _Metric({
+    required this.value,
+    required this.label,
+    required this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Quick Actions',
+        Text(
+          value,
           style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 20,
+            color: valueColor,
+            fontSize: 25,
             fontWeight: FontWeight.w900,
-            letterSpacing: -0.3,
           ),
         ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-           _SmallQuickAction(
-              icon: Icons.event_available_rounded,
-              title: 'New Booking',
-              onTap: () => Navigator.of(context).pushNamed('/reserve'),
-            ),
-            const SizedBox(width: 12),
-            _SmallQuickAction(
-              icon: Icons.badge_rounded,
-              title: 'Sticker',
-              onTap: () => Navigator.of(context).pushNamed('/profile'),
-            ),
-            const SizedBox(width: 12),
-            _SmallQuickAction(
-              icon: Icons.history_rounded,
-              title: 'History',
-              onTap: () => Navigator.of(context).pushNamed('/parking-history'),
-            ),
-            const SizedBox(width: 12),
-            _SmallQuickAction(
-              icon: Icons.person_rounded,
-              title: 'Profile',
-              onTap: () => Navigator.of(context).pushNamed('/profile'),
-            ),
-          ],
+        const SizedBox(height: 3),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppTheme.muted,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
   }
-
-  
-  // =====================================================
-  // RECENT ACTIVITY
-  // =====================================================
-
-  Widget _buildRecentActivity(BuildContext context) {
-    final ReservationRecord? reservation = _nearestReservation;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Recent Activity',
-            style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ActivityTile(
-            icon: _vehicle?.isAnprEnabled == true
-                ? Icons.verified_rounded
-                : Icons.pending_actions_rounded,
-            title: _vehicle == null
-                ? 'No vehicle registered yet'
-                : _vehicle!.isAnprEnabled
-                    ? 'Vehicle approved for ANPR'
-                    : 'Vehicle pending ANPR approval',
-            subtitle: _vehicle?.plateNumber ?? 'Register your vehicle first',
-            trailing: _vehicle == null
-                ? 'None'
-                : _formatStatusLabel(_vehicle!.stickerStatus),
-            color: _vehicle?.isAnprEnabled == true
-                ? const Color(0xFF22C55E)
-                : const Color(0xFFF59E0B),
-          ),
-          ActivityTile(
-            icon: Icons.event_available_rounded,
-            title: reservation == null
-                ? 'No upcoming reservation'
-                : 'Reservation ${reservation.status.label}',
-            subtitle: reservation == null
-                ? 'Book a bay before arriving'
-                : reservation.reservationReference,
-            trailing: reservation == null ? '-' : reservation.bayCode,
-            color: AppTheme.primaryBlue,
-          ),
-          ActivityTile(
-            icon: Icons.account_balance_wallet_rounded,
-            title: 'Wallet balance updated',
-            subtitle: 'Current available wallet balance',
-            trailing: 'RM${_walletBalance.toStringAsFixed(2)}',
-            color: const Color(0xFFF59E0B),
-            showDivider: false,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // BOTTOM NAVIGATION
-  // =====================================================
-
-  Widget _buildBottomNavigation(BuildContext context) {
-    return AppBottomNavigation(
-      currentIndex: 0,
-      onTap: (index) {
-        if (index == 0) return;
-
-        if (index == 1) {
-          Navigator.of(context).pushNamed('/parking');
-          return;
-        }
-
-        if (index == 2) {
-          Navigator.of(context).pushNamed('/reserve');
-          return;
-        }
-
-        if (index == 3) {
-          Navigator.of(context).pushNamed('/wallet');
-          return;
-        }
-
-        if (index == 4) {
-          Navigator.of(context).pushNamed('/profile');
-          return;
-        }
-      },
-    );
-  }
-
-  // =====================================================
-  // FORMAT HELPERS
-  // =====================================================
-
-  String _formatStatusLabel(String value) {
-    if (value.trim().isEmpty) return '-';
-
-    return value
-        .split('_')
-        .map((part) {
-          if (part.isEmpty) return part;
-
-          return '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}';
-        })
-        .join(' ');
-  }
-
-  String _formatDateTimeRange(DateTime start, DateTime end) {
-    return '${_formatDate(start)}, ${_formatTime(start)} - ${_formatTime(end)}';
-  }
-
-  String _formatDate(DateTime value) {
-    const List<String> months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-
-    return '${value.day} ${months[value.month - 1]} ${value.year}';
-  }
-
-  String _formatTime(DateTime value) {
-    final int hour = value.hour;
-    final int minute = value.minute;
-
-    final String period = hour >= 12 ? 'PM' : 'AM';
-    final int displayHour = hour % 12 == 0 ? 12 : hour % 12;
-    final String minuteText = minute.toString().padLeft(2, '0');
-
-    return '$displayHour:$minuteText $period';
-  }
 }
 
-// =====================================================
-// SECTION CARD
-// =====================================================
-
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final String actionText;
-  final VoidCallback onActionTap;
-  final Widget child;
-
-  const _SectionCard({
-    required this.title,
-    required this.actionText,
-    required this.onActionTap,
-    required this.child,
-  });
+class _VerticalDivider extends StatelessWidget {
+  const _VerticalDivider();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: onActionTap,
-                child: Text(
-                  actionText,
-                  style: const TextStyle(
-                    color: AppTheme.primaryBlue,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          child,
-        ],
-      ),
-    );
+    return Container(width: 1, height: 42, color: AppTheme.border);
   }
 }
 
-
-
-// =====================================================
-// SMALL QUICK ACTION
-// =====================================================
-
-class _SmallQuickAction extends StatelessWidget {
+class _ActionButton extends StatelessWidget {
   final IconData icon;
-  final String title;
+  final String label;
   final VoidCallback onTap;
 
-  const _SmallQuickAction({
+  const _ActionButton({
     required this.icon,
-    required this.title,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          height: 96,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.055),
-                blurRadius: 18,
-                offset: const Offset(0, 9),
-              ),
-            ],
-            border: Border.all(
-              color: const Color(0xFFE8EEF7),
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: AppTheme.primaryBlue,
-                size: 28,
-              ),
-              const SizedBox(height: 9),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// =====================================================
-// HEADER ICON BUTTON
-// =====================================================
-
-class _HeaderIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _HeaderIconButton({
-    required this.icon,
+    required this.label,
     required this.onTap,
   });
 
@@ -1275,105 +562,122 @@ class _HeaderIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        width: 50,
-        height: 50,
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: AppTheme.primaryBlue),
+            const SizedBox(height: 7),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppTheme.ink,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
-          border: Border.all(
-            color: const Color(0xFFE8EEF7),
-          ),
-        ),
-        child: Icon(
-          icon,
-          color: AppTheme.primaryBlue,
-          size: 25,
         ),
       ),
     );
   }
 }
 
-// =====================================================
-// NOTIFICATION BELL BUTTON
-// =====================================================
-
-class _NotificationBellButton extends StatelessWidget {
-  final int unreadCount;
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String action;
   final VoidCallback onTap;
 
-  const _NotificationBellButton({
-    required this.unreadCount,
+  const _SectionHeader({
+    required this.title,
+    required this.action,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-              border: Border.all(
-                color: const Color(0xFFE8EEF7),
-              ),
-            ),
-            child: const Icon(
-              Icons.notifications_rounded,
-              color: AppTheme.primaryBlue,
-              size: 25,
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: AppTheme.ink,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
             ),
           ),
-          if (unreadCount > 0)
-            Positioned(
-              top: -4,
-              right: -4,
-              child: Container(
-                width: 20,
-                height: 20,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 2,
-                  ),
-                ),
-                child: Text(
-                  unreadCount > 9 ? '9+' : unreadCount.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ),
+        ),
+        TextButton(onPressed: onTap, child: Text(action)),
+      ],
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final bool positive;
+
+  const _StatusChip({required this.label, required this.positive});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = positive ? const Color(0xFF067647) : AppTheme.muted;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingPanel extends StatelessWidget {
+  const _LoadingPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 90),
+      child: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _ErrorPanel extends StatelessWidget {
+  final Future<void> Function() onRetry;
+
+  const _ErrorPanel({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off_outlined, color: AppTheme.muted, size: 34),
+          const SizedBox(height: 10),
+          const Text(
+            'Unable to refresh the dashboard.',
+            style: TextStyle(color: AppTheme.ink, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
         ],
       ),
     );
