@@ -16,6 +16,7 @@ class WalletTransaction {
   final bool isDebit;
   final DateTime dateTime;
   final WalletTransactionType type;
+  final String paymentStatus;
 
   const WalletTransaction({
     required this.id,
@@ -25,18 +26,25 @@ class WalletTransaction {
     required this.isDebit,
     required this.dateTime,
     required this.type,
+    required this.paymentStatus,
   });
+
+  bool get isPending => paymentStatus == 'pending';
+  bool get isFailed => paymentStatus == 'failed';
+  bool get isRefunded => paymentStatus == 'refunded';
+  bool get isPaid => paymentStatus == 'paid';
 
   // =====================================================
   // FROM SUPABASE JSON
   // =====================================================
 
   factory WalletTransaction.fromJson(Map<String, dynamic> json) {
-    final String paymentType = json['payment_type']?.toString() ?? '';
+    final String paymentType =
+        json['payment_type']?.toString().trim().toLowerCase() ?? '';
     final String paymentMethod =
-        json['payment_method']?.toString() ?? 'simulated';
+        json['payment_method']?.toString().trim().toLowerCase() ?? '-';
     final String paymentStatus =
-        json['payment_status']?.toString() ?? 'pending';
+        json['payment_status']?.toString().trim().toLowerCase() ?? 'pending';
     final String reference = json['transaction_reference']?.toString() ?? '-';
 
     return WalletTransaction(
@@ -54,6 +62,7 @@ class WalletTransaction {
           _toDateTime(json['created_at']) ??
           DateTime.now(),
       type: _mapType(paymentType: paymentType, paymentStatus: paymentStatus),
+      paymentStatus: paymentStatus,
     );
   }
 
@@ -102,13 +111,13 @@ class WalletTransaction {
 
     switch (paymentType) {
       case 'wallet_topup':
-        return 'Wallet Top Up';
+        return 'Wallet top up';
       case 'reservation_fee':
-        return 'Reservation Fee';
+        return 'Reservation fee';
       case 'parking_fee':
-        return 'Parking Fee';
+        return 'Parking fee';
       default:
-        return 'Payment Transaction';
+        return 'Payment';
     }
   }
 
@@ -117,25 +126,24 @@ class WalletTransaction {
     required String paymentStatus,
     required String reference,
   }) {
-    final String method = paymentMethod.toUpperCase();
-
-    if (paymentStatus == 'paid') {
-      return '$method payment successful • $reference';
-    }
+    final String method = paymentMethod == '-'
+        ? ''
+        : paymentMethod.toUpperCase();
+    final String prefix = method.isEmpty ? reference : '$method · $reference';
 
     if (paymentStatus == 'pending') {
-      return '$method payment pending • $reference';
+      return '$prefix · Pending confirmation';
     }
 
     if (paymentStatus == 'failed') {
-      return '$method payment failed • $reference';
+      return '$prefix · Failed';
     }
 
     if (paymentStatus == 'refunded') {
-      return '$method payment refunded • $reference';
+      return '$prefix · Refunded';
     }
 
-    return '$method payment • $reference';
+    return prefix;
   }
 
   // =====================================================

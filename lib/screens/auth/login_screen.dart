@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/constants/app_assets.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/mobile_payment_session_service.dart';
 import '../../core/services/push_notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/university_user.dart';
@@ -16,6 +17,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
+  final MobilePaymentSessionService _mobilePaymentSessionService =
+      MobilePaymentSessionService();
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -44,11 +47,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final UniversityUser user = await _authService.signInWithUniversityId(
-        universityId: identifier,
-        password: password,
-      );
+      final UniversityUser user = await _mobilePaymentSessionService
+          .loginAndCreateSession(identifier: identifier, password: password);
 
+      await _authService.refreshLocalUser(user);
       await PushNotificationService.saveCurrentToken();
 
       if (!mounted) return;

@@ -238,23 +238,6 @@ class _ParkingHistoryScreenState extends State<ParkingHistoryScreen> {
             ],
           ),
         ),
-        InkWell(
-          onTap: _loadHistory,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(
-              Icons.refresh_rounded,
-              color: AppTheme.primaryBlue,
-              size: 24,
-            ),
-          ),
-        ),
       ],
     );
   }

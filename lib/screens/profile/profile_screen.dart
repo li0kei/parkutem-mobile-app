@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/services/auth_service.dart';
+import '../../core/services/mobile_payment_session_service.dart';
 import '../../core/services/university_user_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/university_user.dart';
@@ -32,6 +33,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final UniversityUserService _universityUserService = UniversityUserService();
   final VehicleService _vehicleService = VehicleService();
   final AuthService _authService = AuthService();
+  final MobilePaymentSessionService _mobilePaymentSessionService =
+      MobilePaymentSessionService();
 
   UniversityUser? _profile;
   VehicleRecord? _vehicle;
@@ -273,23 +276,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-        InkWell(
-          onTap: _loadProfile,
-          borderRadius: BorderRadius.circular(15),
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(
-              Icons.refresh_rounded,
-              color: AppTheme.primaryBlue,
-              size: 24,
-            ),
           ),
         ),
       ],
@@ -799,6 +785,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 Navigator.of(dialogContext).pop();
 
+                await _mobilePaymentSessionService.revokeCurrentSession();
                 await _authService.signOut();
 
                 if (!mounted) return;

@@ -3,99 +3,68 @@ import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 import '../models/wallet_transaction.dart';
 
-// =====================================================
-// WALLET TRANSACTION TILE
-// =====================================================
-
 class WalletTransactionTile extends StatelessWidget {
   final WalletTransaction transaction;
 
   const WalletTransactionTile({super.key, required this.transaction});
 
-  // =====================================================
-  // TRANSACTION COLOR
-  // =====================================================
+  Color get _accent {
+    if (transaction.isPending) return const Color(0xFFB54708);
+    if (transaction.isFailed) return const Color(0xFFB42318);
+    if (!transaction.isDebit) return const Color(0xFF067647);
 
-  Color get transactionColor {
-    if (!transaction.isDebit) return const Color(0xFF22C55E);
-
-    switch (transaction.type) {
-      case WalletTransactionType.reservationFee:
-        return AppTheme.primaryBlue;
-      case WalletTransactionType.parkingFee:
-        return const Color(0xFFF59E0B);
-      case WalletTransactionType.topUp:
-        return const Color(0xFF22C55E);
-      case WalletTransactionType.refund:
-        return const Color(0xFF22C55E);
-    }
+    return switch (transaction.type) {
+      WalletTransactionType.reservationFee => AppTheme.primaryBlue,
+      WalletTransactionType.parkingFee => const Color(0xFFB54708),
+      WalletTransactionType.topUp => const Color(0xFF067647),
+      WalletTransactionType.refund => const Color(0xFF067647),
+    };
   }
 
-  // =====================================================
-  // TRANSACTION ICON
-  // =====================================================
-
-  IconData get transactionIcon {
-    switch (transaction.type) {
-      case WalletTransactionType.topUp:
-        return Icons.add_card_rounded;
-      case WalletTransactionType.reservationFee:
-        return Icons.event_available_rounded;
-      case WalletTransactionType.parkingFee:
-        return Icons.local_parking_rounded;
-      case WalletTransactionType.refund:
-        return Icons.undo_rounded;
-    }
+  IconData get _icon {
+    return switch (transaction.type) {
+      WalletTransactionType.topUp => Icons.add_card_outlined,
+      WalletTransactionType.reservationFee => Icons.event_available_outlined,
+      WalletTransactionType.parkingFee => Icons.local_parking_outlined,
+      WalletTransactionType.refund => Icons.undo_rounded,
+    };
   }
-
-  // =====================================================
-  // DATE FORMATTER
-  // =====================================================
 
   String _formatDate(DateTime dateTime) {
-    final String day = dateTime.day.toString().padLeft(2, '0');
-    final String month = dateTime.month.toString().padLeft(2, '0');
-    final String hour = dateTime.hour.toString().padLeft(2, '0');
-    final String minute = dateTime.minute.toString().padLeft(2, '0');
-
-    return '$day/$month/${dateTime.year} • $hour:$minute';
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$day/$month/${dateTime.year} · $hour:$minute';
   }
 
-  // =====================================================
-  // BUILD
-  // =====================================================
+  String get _amountLabel {
+    if (transaction.isPending || transaction.isFailed) {
+      return 'RM${transaction.amount.toStringAsFixed(2)}';
+    }
+
+    final prefix = transaction.isDebit ? '-' : '+';
+    return '$prefix RM${transaction.amount.toStringAsFixed(2)}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final String prefix = transaction.isDebit ? '-' : '+';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE8EEF7)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.045),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: transactionColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              color: _accent.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
             ),
-            child: Icon(transactionIcon, color: transactionColor, size: 24),
+            child: Icon(_icon, color: _accent, size: 20),
           ),
-          const SizedBox(width: 13),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,41 +72,35 @@ class WalletTransactionTile extends StatelessWidget {
                 Text(
                   transaction.title,
                   style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w900,
+                    color: AppTheme.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   transaction.description,
                   style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 12.2,
-                    fontWeight: FontWeight.w600,
+                    color: AppTheme.muted,
+                    fontSize: 11.8,
+                    height: 1.35,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   _formatDate(transaction.dateTime),
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 11.4,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(color: AppTheme.muted, fontSize: 10.8),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Text(
-            '$prefix RM${transaction.amount.toStringAsFixed(2)}',
+            _amountLabel,
             style: TextStyle(
-              color: transaction.isDebit
-                  ? const Color(0xFFEF4444)
-                  : const Color(0xFF22C55E),
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
+              color: _accent,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],

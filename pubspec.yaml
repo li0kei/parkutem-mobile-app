@@ -21,6 +21,7 @@ dependencies:
   supabase_flutter: ^2.12.4
   url_launcher: ^6.3.2
   shared_preferences: ^2.5.5
+  flutter_secure_storage: ^9.2.4
   flutter_map: 8.2.2
   latlong2: 0.9.1
 

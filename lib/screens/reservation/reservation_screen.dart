@@ -238,10 +238,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
     return _selectedDuration;
   }
 
-  String _durationFeeLabel(String duration) {
-    return 'Preset duration';
-  }
-
   // =====================================================
   // RESERVATION FEE
   // =====================================================
@@ -500,49 +496,89 @@ class _ReservationScreenState extends State<ReservationScreen> {
   }
 
   // =====================================================
-  // BUILD
+  // BUILD - MOBILE NATIVE RESERVATION FLOW
   // =====================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FB),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text(
+          'Reserve',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        backgroundColor: Colors.white,
+      ),
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _loadParkingBays,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(context),
-                      const SizedBox(height: 20),
-                      _buildReservationSummary(),
-                      const SizedBox(height: 24),
-                      _buildZoneSelector(),
-                      const SizedBox(height: 24),
-                      _buildBaySelector(),
-                      const SizedBox(height: 24),
-                      _buildDateSelector(),
-                      const SizedBox(height: 24),
-                      _buildDurationSelector(),
-                      const SizedBox(height: 24),
-                      _buildTimeSlotSelector(),
-                      const SizedBox(height: 24),
-                      _buildPaymentSummary(),
-                      const SizedBox(height: 24),
-                      _buildPolicyNote(),
-                      const SizedBox(height: 24),
-                      _buildConfirmButton(),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                  children: [
+                    const Text(
+                      'Choose an available bay and reservation time.',
+                      style: TextStyle(
+                        color: AppTheme.muted,
+                        fontSize: 13.5,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    _buildFieldLabel('Parking area'),
+                    const SizedBox(height: 8),
+                    _buildZoneDropdown(),
+                    const SizedBox(height: 22),
+                    _buildFieldLabel('Parking bay'),
+                    const SizedBox(height: 8),
+                    _buildBayPicker(),
+                    const SizedBox(height: 22),
+                    _buildFieldLabel('Date'),
+                    const SizedBox(height: 8),
+                    _buildDatePickerRow(),
+                    const SizedBox(height: 22),
+                    _buildFieldLabel('Duration'),
+                    const SizedBox(height: 8),
+                    _buildDurationDropdown(),
+                    const SizedBox(height: 22),
+                    _buildFieldLabel('Time'),
+                    const SizedBox(height: 8),
+                    _buildTimePickerRow(),
+                    const SizedBox(height: 28),
+                    _buildPriceSummary(),
+                    const SizedBox(height: 22),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _isSubmitting ? null : _confirmReservation,
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.2,
+                                ),
+                              )
+                            : const Text('Confirm reservation'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Reservation fee is RM2. Parking after 7:00 PM may add an hourly charge.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppTheme.muted,
+                        fontSize: 11.5,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -553,643 +589,343 @@ class _ReservationScreenState extends State<ReservationScreen> {
     );
   }
 
-  // =====================================================
-  // HEADER
-  // =====================================================
-
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: () => Navigator.of(context).pushReplacementNamed('/home'),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.055),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.arrow_back_rounded,
-              color: Color(0xFF0F172A),
-              size: 24,
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Reserve Parking',
-                style: TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Book an available bay before arriving',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        InkWell(
-          onTap: _loadParkingBays,
-          borderRadius: BorderRadius.circular(15),
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(
-              Icons.refresh_rounded,
-              color: AppTheme.primaryBlue,
-              size: 24,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // =====================================================
-  // RESERVATION SUMMARY
-  // =====================================================
-
-  Widget _buildReservationSummary() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.primaryBlue, Color(0xFF056BF1)],
-        ),
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryBlue.withValues(alpha: 0.26),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(19),
-            ),
-            child: const Icon(
-              Icons.local_parking_rounded,
-              color: Colors.white,
-              size: 31,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Selected Reservation',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  _selectedBay == null
-                      ? 'No bay selected yet'
-                      : '${_selectedBay!.zone} • Bay ${_selectedBay!.bayNumber}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.78),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _reservationDateTimeLabel,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.80),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 9),
-                Text(
-                  'Total: RM${_totalToPay.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+  Widget _buildFieldLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        color: AppTheme.ink,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
       ),
     );
   }
 
-  // =====================================================
-  // ZONE SELECTOR
-  // =====================================================
-
-  Widget _buildZoneSelector() {
-    return _SectionContainer(
-      title: 'Select Parking Zone',
-      child: SizedBox(
-        height: 43,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          itemCount: _zones.length,
-          separatorBuilder: (context, index) => const SizedBox(width: 10),
-          itemBuilder: (context, index) {
-            final String zone = _zones[index];
-            final bool isSelected = zone == _selectedZone;
-
-            return _SelectionPill(
-              label: _formatZoneLabel(zone),
-              isSelected: isSelected,
-              onTap: _isSubmitting
-                  ? () {}
-                  : () {
-                      setState(() {
-                        _selectedZone = zone;
-                        _selectedBay = null;
-                      });
-                    },
-            );
-          },
-        ),
-      ),
+  Widget _buildZoneDropdown() {
+    return DropdownButtonFormField<String>(
+      initialValue: _zones.contains(_selectedZone) ? _selectedZone : 'All',
+      decoration: const InputDecoration(hintText: 'Select parking area'),
+      items: _zones
+          .map(
+            (zone) => DropdownMenuItem<String>(
+              value: zone,
+              child: Text(_formatZoneLabel(zone)),
+            ),
+          )
+          .toList(),
+      onChanged: _isSubmitting
+          ? null
+          : (value) {
+              if (value == null) return;
+              setState(() {
+                _selectedZone = value;
+                _selectedBay = null;
+              });
+            },
     );
   }
 
-  // =====================================================
-  // BAY SELECTOR
-  // =====================================================
-
-  Widget _buildBaySelector() {
+  Widget _buildBayPicker() {
     if (_isLoadingBays) {
-      return _SectionContainer(
-        title: 'Choose Available Bay',
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
-          child: Center(
-            child: CircularProgressIndicator(color: AppTheme.primaryBlue),
-          ),
+      return const _FieldSurface(
+        child: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Loading available bays...'),
+          ],
         ),
       );
     }
 
     if (_bayLoadError != null) {
-      return _SectionContainer(
-        title: 'Choose Available Bay',
-        child: Column(
+      return _FieldSurface(
+        child: Row(
           children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: Color(0xFFEF4444),
-              size: 38,
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Unable to load parking bays',
-              style: TextStyle(
-                color: Color(0xFF0F172A),
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
+            const Expanded(
+              child: Text(
+                'Unable to load parking bays.',
+                style: TextStyle(color: Color(0xFFB42318)),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              _bayLoadError!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 12.5,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 14),
-            ElevatedButton.icon(
-              onPressed: _loadParkingBays,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
+            TextButton(onPressed: _loadParkingBays, child: const Text('Retry')),
           ],
         ),
       );
     }
 
-    final List<ParkingBay> bays = _availableBays;
+    final bay = _selectedBay;
 
-    return _SectionContainer(
-      title: 'Choose Available Bay',
-      child: bays.isEmpty
-          ? _buildEmptyBayState()
-          : GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: bays.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                mainAxisExtent: 108,
-              ),
-              itemBuilder: (context, index) {
-                final ParkingBay bay = bays[index];
-                final bool isSelected = _selectedBay?.id == bay.id;
-
-                return _BaySelectionCard(
-                  bay: bay,
-                  isSelected: isSelected,
-                  onTap: _isSubmitting
-                      ? () {}
-                      : () {
-                          setState(() {
-                            _selectedBay = bay;
-                          });
-                        },
-                );
-              },
-            ),
-    );
-  }
-
-  Widget _buildEmptyBayState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE8EEF7)),
-      ),
-      child: const Column(
+    return _FieldSurface(
+      onTap: _isSubmitting ? null : _showBayPicker,
+      child: Row(
         children: [
-          Icon(Icons.event_busy_rounded, color: Color(0xFF94A3B8), size: 38),
-          SizedBox(height: 10),
-          Text(
-            'No available bay in this zone',
-            style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
+          const Icon(Icons.local_parking_rounded, color: AppTheme.primaryBlue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bay == null
+                      ? 'Choose an available bay'
+                      : 'Bay ${bay.bayNumber}',
+                  style: const TextStyle(
+                    color: AppTheme.ink,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  bay == null
+                      ? '${_availableBays.length} available in ${_formatZoneLabel(_selectedZone)}'
+                      : bay.zone,
+                  style: const TextStyle(color: AppTheme.muted, fontSize: 12),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 4),
-          Text(
-            'Try another parking zone or pull to refresh.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
         ],
       ),
     );
   }
 
-  // =====================================================
-  // DATE SELECTOR
-  // =====================================================
+  Future<void> _showBayPicker() async {
+    final bays = _availableBays;
 
-  Widget _buildDateSelector() {
-    return _SectionContainer(
-      title: 'Select Reservation Date',
-      child: InkWell(
-        onTap: _isSubmitting ? null : _pickReservationDate,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
+    if (bays.isEmpty) {
+      _showMessage('No available bay in this parking area.');
+      return;
+    }
+
+    final ParkingBay? selected = await showModalBottomSheet<ParkingBay>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return FractionallySizedBox(
+          heightFactor: 0.72,
+          child: Column(
             children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: const Icon(
-                  Icons.calendar_month_rounded,
-                  color: AppTheme.primaryBlue,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                child: Row(
                   children: [
-                    Text(
-                      _selectedDateLabel,
-                      style: const TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Tap to change reservation date',
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        '${_formatZoneLabel(_selectedZone)} · ${bays.length} available',
+                        style: const TextStyle(
+                          color: AppTheme.ink,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF94A3B8),
-                size: 25,
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: bays.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final bay = bays[index];
+                    return ListTile(
+                      title: Text(
+                        'Bay ${bay.bayNumber}',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(bay.zone),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => Navigator.of(sheetContext).pop(bay),
+                    );
+                  },
+                ),
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
+
+    if (selected != null && mounted) {
+      setState(() => _selectedBay = selected);
+    }
   }
 
-  // =====================================================
-  // DURATION SELECTOR
-  // =====================================================
-
-  Widget _buildDurationSelector() {
-    return _SectionContainer(
-      title: 'Select Preset Duration',
+  Widget _buildDatePickerRow() {
+    return _FieldSurface(
+      onTap: _isSubmitting ? null : _pickReservationDate,
       child: Row(
-        children: _durations.map((duration) {
-          final bool isSelected = duration == _selectedDuration;
-
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                right: duration == _durations.last ? 0 : 10,
-              ),
-              child: _CompactChoiceCard(
-                label: duration,
-                subtitle: _durationFeeLabel(duration),
-                isSelected: isSelected,
-                onTap: _isSubmitting
-                    ? () {}
-                    : () {
-                        setState(() {
-                          _selectedDuration = duration;
-                          _isCustomTimeSlot = false;
-                          _customStartTime = null;
-                          _customEndTime = null;
-                        });
-                      },
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  // =====================================================
-  // TIME SLOT SELECTOR
-  // =====================================================
-
-  Widget _buildTimeSlotSelector() {
-    return _SectionContainer(
-      title: 'Select Time Slot',
-      child: Column(
-        children: [
-          ..._presetStartTimes.map((startTime) {
-            final bool isSelected =
-                !_isCustomTimeSlot && startTime == _selectedPresetStartTime;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _TimeSlotCard(
-                slot: '$_selectedDateLabel, ${_presetSlotLabel(startTime)}',
-                subtitle: 'Preset campus reservation slot',
-                isSelected: isSelected,
-                onTap: _isSubmitting
-                    ? () {}
-                    : () {
-                        setState(() {
-                          _selectedPresetStartTime = startTime;
-                          _isCustomTimeSlot = false;
-                          _customStartTime = null;
-                          _customEndTime = null;
-                        });
-                      },
-              ),
-            );
-          }),
-          _TimeSlotCard(
-            slot: _isCustomTimeSlot
-                ? _reservationDateTimeLabel
-                : 'Custom Time Slot',
-            subtitle: _isCustomTimeSlot
-                ? 'Custom duration: $_customDurationLabel'
-                : 'Choose your own start and end time',
-            isSelected: _isCustomTimeSlot,
-            icon: Icons.edit_calendar_rounded,
-            onTap: _isSubmitting ? () {} : _pickCustomTimeSlot,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // PAYMENT SUMMARY
-  // =====================================================
-
-  Widget _buildPaymentSummary() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.16),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _PaymentRow(
-            label: 'Reservation Duration',
-            value: _reservationDurationLabel,
-            color: Colors.white,
-          ),
-          const SizedBox(height: 12),
-          _PaymentRow(
-            label: 'Reservation Fee',
-            value: 'RM${_reservationFee.toStringAsFixed(2)}',
-            color: Colors.white,
-          ),
-          const SizedBox(height: 12),
-          _PaymentRow(
-            label: 'Parking Fee After 7PM',
-            value: 'RM${_parkingFee.toStringAsFixed(2)}',
-            color: _parkingFee > 0 ? const Color(0xFFF59E0B) : Colors.white,
-          ),
-          const SizedBox(height: 14),
-          Divider(color: Colors.white.withValues(alpha: 0.12), height: 1),
-          const SizedBox(height: 14),
-          _PaymentRow(
-            label: 'Total to Pay',
-            value: 'RM${_totalToPay.toStringAsFixed(2)}',
-            color: const Color(0xFF22C55E),
-            isBold: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // POLICY NOTE
-  // =====================================================
-
-  Widget _buildPolicyNote() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryBlue.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
-            Icons.info_outline_rounded,
+            Icons.calendar_today_outlined,
             color: AppTheme.primaryBlue,
-            size: 21,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Reservation fee is a fixed one-time charge when students or staff book a bay in advance. '
-              'Normal student/staff parking is free from 7:00 AM to 7:00 PM without reservation. '
-              'Parking fee after 7:00 PM is calculated from the reserved time slot when applicable.',
-              style: TextStyle(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.74),
-                fontSize: 12.4,
-                fontWeight: FontWeight.w600,
-                height: 1.45,
+              _selectedDateLabel,
+              style: const TextStyle(
+                color: AppTheme.ink,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
+          const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
         ],
       ),
     );
   }
 
-  // =====================================================
-  // CONFIRM BUTTON
-  // =====================================================
+  Widget _buildDurationDropdown() {
+    return DropdownButtonFormField<String>(
+      initialValue: _selectedDuration,
+      items: _durations
+          .map(
+            (duration) => DropdownMenuItem<String>(
+              value: duration,
+              child: Text(duration),
+            ),
+          )
+          .toList(),
+      onChanged: _isSubmitting
+          ? null
+          : (value) {
+              if (value == null) return;
+              setState(() {
+                _selectedDuration = value;
+                _isCustomTimeSlot = false;
+                _customStartTime = null;
+                _customEndTime = null;
+              });
+            },
+    );
+  }
 
-  Widget _buildConfirmButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppTheme.primaryCyan, AppTheme.primaryBlue],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryBlue.withValues(alpha: 0.26),
-              blurRadius: 22,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: ElevatedButton(
-          onPressed: _isSubmitting ? null : _confirmReservation,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            disabledBackgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: _isSubmitting
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.4,
-                  ),
-                )
-              : const Text(
-                  'Confirm Reservation',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w900,
+  Widget _buildTimePickerRow() {
+    return _FieldSurface(
+      onTap: _isSubmitting ? null : _showTimePickerSheet,
+      child: Row(
+        children: [
+          const Icon(Icons.schedule_rounded, color: AppTheme.primaryBlue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _reservationDateTimeLabel,
+                  style: const TextStyle(
+                    color: AppTheme.ink,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-        ),
+                if (_isCustomTimeSlot) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    _customDurationLabel,
+                    style: const TextStyle(color: AppTheme.muted, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+        ],
       ),
+    );
+  }
+
+  Future<void> _showTimePickerSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Choose time',
+                style: TextStyle(
+                  color: AppTheme.ink,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              for (final startTime in _presetStartTimes)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    !_isCustomTimeSlot && startTime == _selectedPresetStartTime
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_off_rounded,
+                    color: AppTheme.primaryBlue,
+                  ),
+                  title: Text(_presetSlotLabel(startTime)),
+                  onTap: () {
+                    setState(() {
+                      _selectedPresetStartTime = startTime;
+                      _isCustomTimeSlot = false;
+                      _customStartTime = null;
+                      _customEndTime = null;
+                    });
+                    Navigator.of(sheetContext).pop();
+                  },
+                ),
+              const Divider(),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.edit_calendar_outlined),
+                title: const Text('Custom time'),
+                subtitle: const Text('Choose start and end time'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await _pickCustomTimeSlot();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPriceSummary() {
+    return Column(
+      children: [
+        _PriceRow(
+          label: 'Reservation fee',
+          value: 'RM${_reservationFee.toStringAsFixed(2)}',
+        ),
+        if (_parkingFee > 0) ...[
+          const SizedBox(height: 10),
+          _PriceRow(
+            label: 'After 7:00 PM parking',
+            value: 'RM${_parkingFee.toStringAsFixed(2)}',
+          ),
+        ],
+        const Divider(height: 26),
+        _PriceRow(
+          label: 'Total',
+          value: 'RM${_totalToPay.toStringAsFixed(2)}',
+          strong: true,
+        ),
+      ],
     );
   }
 
@@ -1369,323 +1105,43 @@ class _ReservationScreenState extends State<ReservationScreen> {
   }
 }
 
-// =====================================================
-// SECTION CONTAINER
-// =====================================================
-
-class _SectionContainer extends StatelessWidget {
-  final String title;
+class _FieldSurface extends StatelessWidget {
   final Widget child;
+  final VoidCallback? onTap;
 
-  const _SectionContainer({required this.title, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE8EEF7)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.055),
-            blurRadius: 18,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-// =====================================================
-// SELECTION PILL
-// =====================================================
-
-class _SelectionPill extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _SelectionPill({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _FieldSurface({required this.child, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryBlue : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryBlue : const Color(0xFFE2E8F0),
+    return Material(
+      color: AppTheme.canvas,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.border),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
-            fontSize: 12.5,
-            fontWeight: FontWeight.w900,
-          ),
+          child: child,
         ),
       ),
     );
   }
 }
 
-// =====================================================
-// BAY SELECTION CARD
-// =====================================================
-
-class _BaySelectionCard extends StatelessWidget {
-  final ParkingBay bay;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _BaySelectionCard({
-    required this.bay,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryBlue : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryBlue : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              isSelected
-                  ? Icons.check_circle_rounded
-                  : Icons.local_parking_rounded,
-              color: isSelected ? Colors.white : const Color(0xFF22C55E),
-              size: 24,
-            ),
-            const Spacer(),
-            Text(
-              bay.bayNumber,
-              style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF0F172A),
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              bay.zone,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isSelected
-                    ? Colors.white.withValues(alpha: 0.76)
-                    : const Color(0xFF64748B),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// =====================================================
-// COMPACT CHOICE CARD
-// =====================================================
-
-class _CompactChoiceCard extends StatelessWidget {
-  final String label;
-  final String subtitle;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CompactChoiceCard({
-    required this.label,
-    required this.subtitle,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 84,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryBlue : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryBlue : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF0F172A),
-                fontSize: 12.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isSelected
-                    ? Colors.white.withValues(alpha: 0.78)
-                    : const Color(0xFF64748B),
-                fontSize: 11.2,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// =====================================================
-// TIME SLOT CARD
-// =====================================================
-
-class _TimeSlotCard extends StatelessWidget {
-  final String slot;
-  final String? subtitle;
-  final bool isSelected;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _TimeSlotCard({
-    required this.slot,
-    required this.isSelected,
-    required this.onTap,
-    this.subtitle,
-    this.icon = Icons.access_time_rounded,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryBlue : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryBlue : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? Icons.check_circle_rounded : icon,
-              color: isSelected ? Colors.white : AppTheme.primaryBlue,
-              size: 22,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    slot,
-                    style: TextStyle(
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF0F172A),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle!,
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.74)
-                            : const Color(0xFF64748B),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// =====================================================
-// PAYMENT ROW
-// =====================================================
-
-class _PaymentRow extends StatelessWidget {
+class _PriceRow extends StatelessWidget {
   final String label;
   final String value;
-  final Color color;
-  final bool isBold;
+  final bool strong;
 
-  const _PaymentRow({
+  const _PriceRow({
     required this.label,
     required this.value,
-    required this.color,
-    this.isBold = false,
+    this.strong = false,
   });
 
   @override
@@ -1696,18 +1152,18 @@ class _PaymentRow extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.68),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+              color: strong ? AppTheme.ink : AppTheme.muted,
+              fontSize: strong ? 15 : 13.5,
+              fontWeight: strong ? FontWeight.w800 : FontWeight.w500,
             ),
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            color: color,
-            fontSize: isBold ? 17 : 14,
-            fontWeight: isBold ? FontWeight.w900 : FontWeight.w800,
+            color: AppTheme.ink,
+            fontSize: strong ? 19 : 14,
+            fontWeight: strong ? FontWeight.w800 : FontWeight.w700,
           ),
         ),
       ],
