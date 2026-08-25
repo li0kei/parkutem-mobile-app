@@ -19,8 +19,6 @@ import 'firebase_options.dart';
 // =====================================================
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
     debugPrint('FlutterError: ${details.exceptionAsString()}');
@@ -29,6 +27,7 @@ Future<void> main() async {
 
   runZonedGuarded(
     () async {
+      WidgetsFlutterBinding.ensureInitialized();
       String? startupError;
 
       try {
