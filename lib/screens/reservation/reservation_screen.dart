@@ -4,10 +4,12 @@
 
 import 'package:flutter/material.dart';
 
+import '../../core/services/auth_service.dart';
 import '../../core/services/parking_service.dart';
 import '../../core/services/reservation_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/parking_bay.dart';
+import '../../models/university_user.dart';
 import '../../models/reservation_result.dart';
 import '../../widgets/app_bottom_navigation.dart';
 
@@ -27,11 +29,13 @@ class ReservationScreen extends StatefulWidget {
 // =====================================================
 
 class _ReservationScreenState extends State<ReservationScreen> {
+  final AuthService _authService = AuthService();
   final ParkingService _parkingService = ParkingService();
   final ReservationService _reservationService = ReservationService();
 
   String _selectedZone = 'All';
   ParkingBay? _selectedBay;
+  UniversityUser? _currentUniversityUser;
 
   List<ParkingBay> _parkingBays = [];
 
@@ -69,7 +73,18 @@ class _ReservationScreenState extends State<ReservationScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCurrentUniversityUser();
     _loadParkingBays();
+  }
+
+  Future<void> _loadCurrentUniversityUser() async {
+    final UniversityUser? user = await _authService.getCurrentUniversityUser();
+
+    if (!mounted) return;
+
+    setState(() {
+      _currentUniversityUser = user;
+    });
   }
 
   // =====================================================
@@ -242,15 +257,21 @@ class _ReservationScreenState extends State<ReservationScreen> {
   // RESERVATION FEE
   // =====================================================
 
+  bool get _isStudent {
+    return (_currentUniversityUser?.role ?? '').trim().toLowerCase() ==
+        'student';
+  }
+
   double get _reservationFee {
-    return _fixedReservationFee;
+    // PARKUTEM_STUDENT_PRICING_V1
+    return _isStudent ? 0.00 : _fixedReservationFee;
   }
 
   // =====================================================
   // PARKING FEE AFTER 7PM
   // =====================================================
 
-  double get _parkingFee {
+  double get _staffParkingFee {
     final TimeOfDay? startTime = _isCustomTimeSlot
         ? _customStartTime
         : _selectedPresetStartTime;
@@ -285,6 +306,45 @@ class _ReservationScreenState extends State<ReservationScreen> {
     final double chargeableHours = chargeableMinutes / 60;
 
     return chargeableHours.ceilToDouble() * _parkingFeePerHour;
+  }
+
+  double get _studentParkingFee {
+    final DateTime start = _reservationStartAt;
+    final DateTime end = _reservationEndAt;
+
+    if (!end.isAfter(start)) return 0.00;
+
+    double chargeableMinutes = 0;
+    DateTime day = DateTime(start.year, start.month, start.day);
+
+    while (day.isBefore(end)) {
+      final DateTime nextDay = day.add(const Duration(days: 1));
+      final DateTime eveningStart = DateTime(day.year, day.month, day.day, 19);
+      final DateTime eveningEnd = DateTime(
+        nextDay.year,
+        nextDay.month,
+        nextDay.day,
+      );
+
+      final DateTime overlapStart = start.isAfter(eveningStart)
+          ? start
+          : eveningStart;
+      final DateTime overlapEnd = end.isBefore(eveningEnd) ? end : eveningEnd;
+
+      if (overlapEnd.isAfter(overlapStart)) {
+        chargeableMinutes += overlapEnd.difference(overlapStart).inSeconds / 60;
+      }
+
+      day = nextDay;
+    }
+
+    return double.parse(
+      ((chargeableMinutes / 60) * _parkingFeePerHour).toStringAsFixed(2),
+    );
+  }
+
+  double get _parkingFee {
+    return _isStudent ? _studentParkingFee : _staffParkingFee;
   }
 
   double get _totalToPay {
@@ -570,7 +630,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Reservation fee is RM2. Parking after 7:00 PM may add an hourly charge.',
+                      'Students: no reservation fee; free before 7:00 PM; RM1/hour after 7:00 PM. Staff: existing fee rules apply.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppTheme.muted,
