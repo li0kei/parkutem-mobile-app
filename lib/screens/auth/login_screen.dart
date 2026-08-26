@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/app_assets.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/mobile_payment_session_service.dart';
-import '../../core/services/push_notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/university_user.dart';
 
@@ -51,7 +50,6 @@ class _LoginScreenState extends State<LoginScreen> {
           .loginAndCreateSession(identifier: identifier, password: password);
 
       await _authService.refreshLocalUser(user);
-      await PushNotificationService.saveCurrentToken();
 
       if (!mounted) return;
 

@@ -4,15 +4,11 @@
 
 import 'dart:async';
 
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'app.dart';
-import 'core/services/push_notification_service.dart';
 import 'core/services/supabase_service.dart';
-import 'firebase_options.dart';
 
 // =====================================================
 // MAIN
@@ -38,20 +34,7 @@ Future<void> main() async {
         debugPrintStack(stackTrace: stackTrace);
       }
 
-      try {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
-
-        FirebaseMessaging.onBackgroundMessage(
-          firebaseMessagingBackgroundHandler,
-        );
-      } catch (error, stackTrace) {
-        debugPrint('Firebase init failed: $error');
-        debugPrintStack(stackTrace: stackTrace);
-      }
-
-      try {
+try {
         await SupabaseService.initialize();
       } catch (error, stackTrace) {
         startupError = 'Supabase init failed: $error';
@@ -65,13 +48,7 @@ Future<void> main() async {
             : StartupErrorApp(message: startupError),
       );
 
-      try {
-        await PushNotificationService.init();
-      } catch (error, stackTrace) {
-        debugPrint('Push notification init failed: $error');
-        debugPrintStack(stackTrace: stackTrace);
-      }
-    },
+},
     (error, stackTrace) {
       debugPrint('Uncaught zone error: $error');
       debugPrintStack(stackTrace: stackTrace);
