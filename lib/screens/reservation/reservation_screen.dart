@@ -4,12 +4,10 @@
 
 import 'package:flutter/material.dart';
 
-import '../../core/services/auth_service.dart';
 import '../../core/services/parking_service.dart';
 import '../../core/services/reservation_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/parking_bay.dart';
-import '../../models/university_user.dart';
 import '../../models/reservation_result.dart';
 import '../../widgets/app_bottom_navigation.dart';
 
@@ -29,13 +27,11 @@ class ReservationScreen extends StatefulWidget {
 // =====================================================
 
 class _ReservationScreenState extends State<ReservationScreen> {
-  final AuthService _authService = AuthService();
   final ParkingService _parkingService = ParkingService();
   final ReservationService _reservationService = ReservationService();
 
   String _selectedZone = 'All';
   ParkingBay? _selectedBay;
-  UniversityUser? _currentUniversityUser;
 
   List<ParkingBay> _parkingBays = [];
 
@@ -52,9 +48,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
   TimeOfDay? _customStartTime;
   TimeOfDay? _customEndTime;
   bool _isCustomTimeSlot = false;
-
-  final double _fixedReservationFee = 2.00;
-  final double _parkingFeePerHour = 1.00;
 
   final List<String> _durations = const ['1 Hour', '2 Hours', '3 Hours'];
 
@@ -73,18 +66,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCurrentUniversityUser();
     _loadParkingBays();
-  }
-
-  Future<void> _loadCurrentUniversityUser() async {
-    final UniversityUser? user = await _authService.getCurrentUniversityUser();
-
-    if (!mounted) return;
-
-    setState(() {
-      _currentUniversityUser = user;
-    });
   }
 
   // =====================================================
@@ -251,74 +233,6 @@ class _ReservationScreenState extends State<ReservationScreen> {
     }
 
     return _selectedDuration;
-  }
-
-  // =====================================================
-  // RESERVATION FEE
-  // =====================================================
-
-  bool get _isStudent {
-    return (_currentUniversityUser?.role ?? '').trim().toLowerCase() ==
-        'student';
-  }
-
-  double get _reservationFee {
-    // PARKUTEM_STUDENT_PRICING_V1
-    return _isStudent ? 0.00 : _fixedReservationFee;
-  }
-
-  // =====================================================
-  // PARKING FEE AFTER 7PM
-  // =====================================================
-
-  double get _staffParkingFee {
-    final TimeOfDay? startTime = _isCustomTimeSlot
-        ? _customStartTime
-        : _selectedPresetStartTime;
-
-    final TimeOfDay? endTime = _isCustomTimeSlot
-        ? _customEndTime
-        : _addHoursToTime(_selectedPresetStartTime, _durationHours);
-
-    if (startTime == null || endTime == null) return 0.00;
-
-    final int startMinutes = (startTime.hour * 60) + startTime.minute;
-    int endMinutes = (endTime.hour * 60) + endTime.minute;
-
-    if (endMinutes <= startMinutes) {
-      endMinutes += 24 * 60;
-    }
-
-    const int chargeStartMinutes = 19 * 60;
-
-    if (endMinutes <= chargeStartMinutes) {
-      return 0.00;
-    }
-
-    final int chargedStartMinutes = startMinutes < chargeStartMinutes
-        ? chargeStartMinutes
-        : startMinutes;
-
-    final int chargeableMinutes = endMinutes - chargedStartMinutes;
-
-    if (chargeableMinutes <= 0) return 0.00;
-
-    final double chargeableHours = chargeableMinutes / 60;
-
-    return chargeableHours.ceilToDouble() * _parkingFeePerHour;
-  }
-
-  double get _studentParkingFee {
-    // PARKUTEM_STUDENT_FREE_24_7_V1
-    return 0.00;
-  }
-
-  double get _parkingFee {
-    return _isStudent ? _studentParkingFee : _staffParkingFee;
-  }
-
-  double get _totalToPay {
-    return _reservationFee + _parkingFee;
   }
 
   // =====================================================
@@ -580,7 +494,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     const SizedBox(height: 8),
                     _buildTimePickerRow(),
                     const SizedBox(height: 28),
-                    _buildPriceSummary(),
+                    _buildFreeParkingNotice(),
                     const SizedBox(height: 22),
                     SizedBox(
                       width: double.infinity,
@@ -600,7 +514,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Students: reservation and parking are free. No payment is required for student reservations. Staff: existing fee rules apply.',
+                      'UTeM students and staff park free 24/7. No reservation fee or after-7:00 PM parking charge applies.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppTheme.muted,
@@ -935,27 +849,46 @@ class _ReservationScreenState extends State<ReservationScreen> {
     );
   }
 
-  Widget _buildPriceSummary() {
-    return Column(
-      children: [
-        _PriceRow(
-          label: 'Reservation fee',
-          value: 'RM${_reservationFee.toStringAsFixed(2)}',
-        ),
-        if (_parkingFee > 0) ...[
-          const SizedBox(height: 10),
-          _PriceRow(
-            label: 'After 7:00 PM parking',
-            value: 'RM${_parkingFee.toStringAsFixed(2)}',
+  Widget _buildFreeParkingNotice() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryBlue.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.14)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.verified_outlined, color: AppTheme.primaryBlue, size: 22),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'FREE 24/7 for UTeM users',
+                  style: TextStyle(
+                    color: AppTheme.ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Student and staff reservations are free, including parking after 7:00 PM.',
+                  style: TextStyle(
+                    color: AppTheme.muted,
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
-        const Divider(height: 26),
-        _PriceRow(
-          label: 'Total',
-          value: 'RM${_totalToPay.toStringAsFixed(2)}',
-          strong: true,
-        ),
-      ],
+      ),
     );
   }
 
@@ -1039,10 +972,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
             'Bay ${_selectedBay!.bayNumber} at ${_selectedBay!.zone} has been reserved.\n\n'
             'Date & Time: $_reservationDateTimeLabel\n'
             'Duration: $_reservationDurationLabel\n'
-            'Reservation fee: RM${result.reservationFee.toStringAsFixed(2)}\n'
-            'Parking fee after 7PM: RM${result.after7ParkingFee.toStringAsFixed(2)}\n'
-            'Total paid: RM${result.totalPaid.toStringAsFixed(2)}\n'
-            'Wallet balance: RM${result.newWalletBalance.toStringAsFixed(2)}',
+            'UTeM parking: FREE 24/7',
             style: const TextStyle(color: Color(0xFF475569), height: 1.45),
           ),
           actions: [
@@ -1141,44 +1071,6 @@ class _FieldSurface extends StatelessWidget {
           child: child,
         ),
       ),
-    );
-  }
-}
-
-class _PriceRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool strong;
-
-  const _PriceRow({
-    required this.label,
-    required this.value,
-    this.strong = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: strong ? AppTheme.ink : AppTheme.muted,
-              fontSize: strong ? 15 : 13.5,
-              fontWeight: strong ? FontWeight.w800 : FontWeight.w500,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: AppTheme.ink,
-            fontSize: strong ? 19 : 14,
-            fontWeight: strong ? FontWeight.w800 : FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 }
