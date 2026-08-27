@@ -94,7 +94,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
       _bays.where((bay) => bay.status == ParkingBayStatus.reserved).length;
 
   void _navigateFromBottomBar(int index) {
-    final routes = ['/home', '/parking', '/reserve', '/wallet', '/profile'];
+    final routes = ['/home', '/parking', '/reserve', '/profile'];
     if (index == 1) {
       return;
     }

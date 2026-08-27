@@ -1109,29 +1109,11 @@ class _ReservationScreenState extends State<ReservationScreen> {
         if (index == 2) return;
 
         if (index == 3) {
-          Navigator.of(context).pushReplacementNamed('/wallet');
-          return;
-        }
-
-        if (index == 4) {
           Navigator.of(context).pushReplacementNamed('/profile');
           return;
         }
-
-        _showMessage('${_navName(index)} screen will be added next.');
       },
     );
-  }
-
-  String _navName(int index) {
-    switch (index) {
-      case 3:
-        return 'Wallet';
-      case 4:
-        return 'Profile';
-      default:
-        return 'Feature';
-    }
   }
 }
 

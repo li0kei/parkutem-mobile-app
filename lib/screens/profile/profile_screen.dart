@@ -812,7 +812,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildBottomNavigation(BuildContext context) {
     return AppBottomNavigation(
-      currentIndex: 4,
+      currentIndex: 3,
       onTap: (index) {
         if (index == 0) {
           Navigator.of(context).pushReplacementNamed('/home');
@@ -829,12 +829,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return;
         }
 
-        if (index == 3) {
-          Navigator.of(context).pushReplacementNamed('/wallet');
-          return;
-        }
-
-        if (index == 4) return;
+        if (index == 3) return;
       },
     );
   }
