@@ -42,11 +42,7 @@ class AppBottomNavigation extends StatelessWidget {
               selectedIcon: Icon(Icons.event_available_rounded),
               label: 'Reserve',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              selectedIcon: Icon(Icons.account_balance_wallet_rounded),
-              label: 'Wallet',
-            ),
+
             NavigationDestination(
               icon: Icon(Icons.person_outline_rounded),
               selectedIcon: Icon(Icons.person_rounded),

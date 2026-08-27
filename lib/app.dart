@@ -8,9 +8,7 @@ import 'screens/auth/splash_screen.dart';
 
 import 'screens/home/home_screen.dart';
 import 'screens/parking/parking_screen.dart';
-import 'screens/payment/payment_method_screen.dart';
 import 'screens/reservation/reservation_screen.dart';
-import 'screens/wallet/wallet_screen.dart';
 
 import 'screens/profile/device_sessions_screen.dart';
 import 'screens/profile/help_support_screen.dart';
@@ -60,8 +58,6 @@ class ParkUTeMApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/parking': (context) => const ParkingScreen(),
         '/reserve': (context) => const ReservationScreen(),
-        '/wallet': (context) => const WalletScreen(),
-        '/payment-method': (context) => const PaymentMethodScreen(),
 
         '/profile': (context) => const ProfileScreen(),
         '/notifications': (context) => const NotificationsScreen(),
