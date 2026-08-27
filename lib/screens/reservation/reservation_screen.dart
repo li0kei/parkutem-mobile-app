@@ -309,38 +309,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
   }
 
   double get _studentParkingFee {
-    final DateTime start = _reservationStartAt;
-    final DateTime end = _reservationEndAt;
-
-    if (!end.isAfter(start)) return 0.00;
-
-    double chargeableMinutes = 0;
-    DateTime day = DateTime(start.year, start.month, start.day);
-
-    while (day.isBefore(end)) {
-      final DateTime nextDay = day.add(const Duration(days: 1));
-      final DateTime eveningStart = DateTime(day.year, day.month, day.day, 19);
-      final DateTime eveningEnd = DateTime(
-        nextDay.year,
-        nextDay.month,
-        nextDay.day,
-      );
-
-      final DateTime overlapStart = start.isAfter(eveningStart)
-          ? start
-          : eveningStart;
-      final DateTime overlapEnd = end.isBefore(eveningEnd) ? end : eveningEnd;
-
-      if (overlapEnd.isAfter(overlapStart)) {
-        chargeableMinutes += overlapEnd.difference(overlapStart).inSeconds / 60;
-      }
-
-      day = nextDay;
-    }
-
-    return double.parse(
-      ((chargeableMinutes / 60) * _parkingFeePerHour).toStringAsFixed(2),
-    );
+    // PARKUTEM_STUDENT_FREE_24_7_V1
+    return 0.00;
   }
 
   double get _parkingFee {
@@ -630,7 +600,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Students: no reservation fee; free before 7:00 PM; RM1/hour after 7:00 PM. Staff: existing fee rules apply.',
+                      'Students: reservation and parking are free. No payment is required for student reservations. Staff: existing fee rules apply.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppTheme.muted,
