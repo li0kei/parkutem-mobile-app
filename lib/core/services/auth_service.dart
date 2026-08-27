@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/university_user.dart';
+import 'mobile_payment_session_service.dart';
 import 'supabase_service.dart';
 
 // =====================================================
@@ -19,6 +20,8 @@ class AuthService {
   AuthService();
 
   final SupabaseClient _client = SupabaseService.client;
+  final MobilePaymentSessionService _mobileSessionService =
+      MobilePaymentSessionService();
 
   static const String _userSessionKey = 'parkutem_university_user_session';
 
@@ -179,6 +182,7 @@ class AuthService {
   Future<void> signOut() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
+    await _mobileSessionService.revokeCurrentSession();
     await prefs.remove(_userSessionKey);
 
     if (_client.auth.currentSession != null) {
