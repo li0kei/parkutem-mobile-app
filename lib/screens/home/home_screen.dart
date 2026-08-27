@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateFromBottomBar(int index) {
-    final routes = ['/home', '/parking', '/reserve', '/wallet', '/profile'];
+    final routes = ['/home', '/parking', '/reserve', '/profile'];
     if (index == 0) {
       return;
     }
@@ -169,8 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 8),
                       _buildReservation(),
-                      const Divider(height: 38),
-                      _buildWallet(),
                     ],
                   ],
                 ),
@@ -400,49 +398,6 @@ class _HomeScreenState extends State<HomeScreen> {
           style: const TextStyle(color: AppTheme.muted, fontSize: 13),
         ),
       ],
-    );
-  }
-
-  Widget _buildWallet() {
-    return InkWell(
-      onTap: () => Navigator.of(context).pushNamed('/wallet'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Wallet',
-                    style: TextStyle(
-                      color: AppTheme.ink,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  SizedBox(height: 3),
-                  Text(
-                    'Used for reservations and parking charges',
-                    style: TextStyle(color: AppTheme.muted, fontSize: 12.5),
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              'RM${(_profile?.walletBalance ?? 0).toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: AppTheme.ink,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
-          ],
-        ),
-      ),
     );
   }
 
