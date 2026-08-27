@@ -142,10 +142,6 @@ class ReservationService {
       return 'This parking bay is not available.';
     }
 
-    if (rawMessage.contains('Insufficient wallet balance')) {
-      return 'Insufficient wallet balance.';
-    }
-
     if (rawMessage.contains('Could not find the function')) {
       return 'Reservation function is not ready in Supabase.';
     }

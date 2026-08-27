@@ -113,13 +113,7 @@ class _NotificationSettingsScreenState
                       onChanged: (value) =>
                           _update(_preferences.copyWith(reservation: value)),
                     ),
-                    _PreferenceSwitch(
-                      title: 'Wallet & payments',
-                      subtitle: 'Top ups and parking-related transactions.',
-                      value: _preferences.wallet,
-                      onChanged: (value) =>
-                          _update(_preferences.copyWith(wallet: value)),
-                    ),
+
                     _PreferenceSwitch(
                       title: 'ANPR & parking',
                       subtitle: 'Entry, exit and access decision alerts.',

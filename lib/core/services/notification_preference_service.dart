@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 class NotificationPreferences {
   final bool enabled;
   final bool reservation;
-  final bool wallet;
   final bool anpr;
   final bool support;
   final bool sound;
@@ -12,7 +11,6 @@ class NotificationPreferences {
   const NotificationPreferences({
     required this.enabled,
     required this.reservation,
-    required this.wallet,
     required this.anpr,
     required this.support,
     required this.sound,
@@ -22,7 +20,6 @@ class NotificationPreferences {
   static const defaults = NotificationPreferences(
     enabled: true,
     reservation: true,
-    wallet: true,
     anpr: true,
     support: true,
     sound: true,
@@ -36,9 +33,7 @@ class NotificationPreferences {
       case 'reservation':
       case 'reminder':
         return reservation;
-      case 'wallet':
-      case 'payment':
-        return wallet;
+
       case 'anpr':
       case 'parking':
         return anpr;
@@ -53,7 +48,6 @@ class NotificationPreferences {
   NotificationPreferences copyWith({
     bool? enabled,
     bool? reservation,
-    bool? wallet,
     bool? anpr,
     bool? support,
     bool? sound,
@@ -62,7 +56,6 @@ class NotificationPreferences {
     return NotificationPreferences(
       enabled: enabled ?? this.enabled,
       reservation: reservation ?? this.reservation,
-      wallet: wallet ?? this.wallet,
       anpr: anpr ?? this.anpr,
       support: support ?? this.support,
       sound: sound ?? this.sound,
@@ -74,7 +67,6 @@ class NotificationPreferences {
 class NotificationPreferenceService {
   static const _enabledKey = 'notification_enabled';
   static const _reservationKey = 'notification_reservation';
-  static const _walletKey = 'notification_wallet';
   static const _anprKey = 'notification_anpr';
   static const _supportKey = 'notification_support';
   static const _soundKey = 'notification_sound';
@@ -87,7 +79,6 @@ class NotificationPreferenceService {
     return NotificationPreferences(
       enabled: prefs.getBool(_enabledKey) ?? defaults.enabled,
       reservation: prefs.getBool(_reservationKey) ?? defaults.reservation,
-      wallet: prefs.getBool(_walletKey) ?? defaults.wallet,
       anpr: prefs.getBool(_anprKey) ?? defaults.anpr,
       support: prefs.getBool(_supportKey) ?? defaults.support,
       sound: prefs.getBool(_soundKey) ?? defaults.sound,
@@ -101,7 +92,6 @@ class NotificationPreferenceService {
     await Future.wait([
       prefs.setBool(_enabledKey, value.enabled),
       prefs.setBool(_reservationKey, value.reservation),
-      prefs.setBool(_walletKey, value.wallet),
       prefs.setBool(_anprKey, value.anpr),
       prefs.setBool(_supportKey, value.support),
       prefs.setBool(_soundKey, value.sound),
