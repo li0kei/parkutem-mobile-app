@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/services/auth_service.dart';
-import '../../core/services/mobile_payment_session_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/university_user.dart';
 
@@ -27,8 +26,6 @@ class SecurityScreen extends StatefulWidget {
 
 class _SecurityScreenState extends State<SecurityScreen> {
   final AuthService _authService = AuthService();
-  final MobilePaymentSessionService _mobilePaymentSessionService =
-      MobilePaymentSessionService();
 
   final TextEditingController _currentPasswordController =
       TextEditingController();
@@ -175,7 +172,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
   // =====================================================
 
   Future<void> _handleSignOut() async {
-    await _mobilePaymentSessionService.revokeCurrentSession();
     await _authService.signOut();
 
     if (!mounted) {
