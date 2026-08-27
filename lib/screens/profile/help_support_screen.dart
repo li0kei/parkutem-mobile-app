@@ -40,7 +40,6 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   final List<_IssueOption> _issueTypes = const [
     _IssueOption(value: 'general', label: 'General'),
-    _IssueOption(value: 'payment', label: 'Payment'),
     _IssueOption(value: 'anpr', label: 'ANPR Detection'),
     _IssueOption(value: 'reservation', label: 'Reservation'),
     _IssueOption(value: 'sticker', label: 'Sticker / Vehicle'),
@@ -144,10 +143,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            AppTheme.primaryBlue,
-            Color(0xFF056BF1),
-          ],
+          colors: [AppTheme.primaryBlue, Color(0xFF056BF1)],
         ),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
@@ -161,11 +157,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.support_agent_rounded,
-            color: Colors.white,
-            size: 42,
-          ),
+          Icon(Icons.support_agent_rounded, color: Colors.white, size: 42),
           SizedBox(height: 16),
           Text(
             'Parking Administration',
@@ -177,7 +169,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           ),
           SizedBox(height: 6),
           Text(
-            'For sticker issues, reservation problems, payment concerns, parking bay problems, or ANPR detection errors.',
+            'For sticker issues, reservation problems, parking bay problems, or ANPR detection errors.',
             style: TextStyle(
               color: Color(0xFFDCEBFF),
               fontSize: 13,
@@ -269,9 +261,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,19 +320,19 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       child: const Column(
         children: [
           _FaqTile(
-            question: 'Why do I need to pay reservation fee?',
+            question: 'Is UTeM student/staff parking free?',
             answer:
-                'Reservation fee is a fixed one-time fee for booking a parking bay in advance.',
+                'Yes. UTeM students and staff can park and reserve a bay free 24/7.',
           ),
           _FaqTile(
-            question: 'Is student/staff parking free?',
+            question: 'Can I reserve a parking bay after 7:00 PM?',
             answer:
-                'Normal student/staff parking is free from 7:00 AM to 7:00 PM without reservation.',
+                'Yes. Student and staff reservations remain free after 7:00 PM, subject to bay availability.',
           ),
           _FaqTile(
-            question: 'When is parking fee charged?',
+            question: 'Why might a parking bay be unavailable?',
             answer:
-                'Parking fee is charged for actual parking usage after 7:00 PM.',
+                'A bay may be occupied, under maintenance, or already reserved for the selected time.',
           ),
           _FaqTile(
             question: 'How does ANPR verify my vehicle?',
@@ -394,11 +384,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     return DropdownButtonFormField<String>(
       initialValue: value,
       isExpanded: true,
-        decoration: _inputDecoration(
-        label: label,
-        hintText: label,
-        icon: icon,
-      ),
+      decoration: _inputDecoration(label: label, hintText: label, icon: icon),
       dropdownColor: Colors.white,
       style: const TextStyle(
         color: Color(0xFF0F172A),
@@ -423,11 +409,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     return InputDecoration(
       labelText: label,
       hintText: hintText,
-      prefixIcon: Icon(
-        icon,
-        color: AppTheme.primaryBlue,
-        size: 21,
-      ),
+      prefixIcon: Icon(icon, color: AppTheme.primaryBlue, size: 21),
       labelStyle: const TextStyle(
         color: Color(0xFF64748B),
         fontSize: 12.5,
@@ -440,34 +422,22 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       ),
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 15,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFE2E8F0),
-        ),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFE2E8F0),
-        ),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: AppTheme.primaryBlue,
-          width: 1.6,
-        ),
+        borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.6),
       ),
       disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFE2E8F0),
-        ),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
       ),
     );
   }
@@ -500,10 +470,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
         ),
       ),
     );
@@ -538,18 +505,18 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     });
 
     try {
-      final SupportIssueResult result =
-          await _supportIssueService.createCurrentUserSupportIssue(
-        title: title,
-        issueType: _selectedIssueType,
-        priority: _selectedPriority,
-        description: description,
-        relatedPlate: _emptyToNull(_plateController.text),
-        relatedBay: _emptyToNull(_bayController.text),
-        relatedBookingReference: _emptyToNull(
-          _bookingReferenceController.text,
-        ),
-      );
+      final SupportIssueResult result = await _supportIssueService
+          .createCurrentUserSupportIssue(
+            title: title,
+            issueType: _selectedIssueType,
+            priority: _selectedPriority,
+            description: description,
+            relatedPlate: _emptyToNull(_plateController.text),
+            relatedBay: _emptyToNull(_bayController.text),
+            relatedBookingReference: _emptyToNull(
+              _bookingReferenceController.text,
+            ),
+          );
 
       if (!mounted) return;
 
@@ -559,10 +526,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
     } catch (error) {
       if (!mounted) return;
 
-      _showMessage(
-        'Unable to submit issue: $error',
-        isError: true,
-      );
+      _showMessage('Unable to submit issue: $error', isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -614,10 +578,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             'Reference: ${result.issueReference}\n'
             'Status: ${_formatLabel(result.status)}\n'
             'Priority: ${_formatLabel(result.priority)}',
-            style: const TextStyle(
-              color: Color(0xFF475569),
-              height: 1.45,
-            ),
+            style: const TextStyle(color: Color(0xFF475569), height: 1.45),
           ),
           actions: [
             TextButton(
@@ -643,8 +604,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        backgroundColor:
-            isError ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
+        backgroundColor: isError
+            ? const Color(0xFFEF4444)
+            : const Color(0xFF0F172A),
       ),
     );
   }
@@ -669,10 +631,7 @@ class _IssueOption {
   final String value;
   final String label;
 
-  const _IssueOption({
-    required this.value,
-    required this.label,
-  });
+  const _IssueOption({required this.value, required this.label});
 }
 
 // =====================================================
@@ -695,9 +654,7 @@ class _BackButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFE8EEF7),
-          ),
+          border: Border.all(color: const Color(0xFFE8EEF7)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.055),
@@ -720,10 +677,7 @@ class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _SectionCard({
-    required this.title,
-    required this.child,
-  });
+  const _SectionCard({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -733,9 +687,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE8EEF7),
-        ),
+        border: Border.all(color: const Color(0xFFE8EEF7)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.035),
@@ -799,10 +751,7 @@ class _FaqTile extends StatelessWidget {
         ),
         if (showDivider) ...[
           const SizedBox(height: 13),
-          const Divider(
-            height: 1,
-            color: Color(0xFFE8EEF7),
-          ),
+          const Divider(height: 1, color: Color(0xFFE8EEF7)),
           const SizedBox(height: 13),
         ],
       ],
